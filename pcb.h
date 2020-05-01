@@ -36,6 +36,7 @@ typedef struct pcb{
 } PCB;
 
 void initPcb(PCB *, int simPid);
+int assignFreePcb(PCB *, pid_t);
 void initPcbArray(PCB *);
 void resetPcb(PCB *);
 

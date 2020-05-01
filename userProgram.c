@@ -66,6 +66,12 @@ int main(int argc, char * argv[]){
 	// Gets message queues
         requestMqId = getMessageQueue(REQUEST_MQ_KEY, MQ_PERMS | IPC_CREAT);
         replyMqId = getMessageQueue(REPLY_MQ_KEY, MQ_PERMS | IPC_CREAT);
+
+	fprintf(stderr, "Child %d running! Max pages: %d\n", simPid, 
+		pcbs[simPid].lengthRegister);
+	Clock now = getPTime(systemClock);
+	fprintf(stderr, "Time: %03d : %09d\n\n", now.seconds, now.nanoseconds); 
+
 //	char reply[BUFF_SZ];
 /*
 	// Repeatedly requests or releases resources or terminates

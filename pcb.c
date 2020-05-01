@@ -5,23 +5,26 @@
 // block structures that contain page tables.
 
 #include "constants.h"
-#include "queue.h"
 #include "pcb.h"
+#include "queue.h"
+#include "randomGen.h"
 
 #include <stdio.h>
 
 // Sets non-queue values to defaults
 static void setDefaults(PCB * pcb){
-	pcb->realPid = -1;
+	pcb->realPid = EMPTY;
 
 	int i = 0;
 	for( ; i < MAX_ALLOC_PAGES; i++){
 		pcb->pageTable[i].valid = 0;
 		pcb->pageTable[i].dirty = 0;
-		pcb->pageTable[i].frameNumber = -1;
+		pcb->pageTable[i].frameNumber = EMPTY;
 	}
 
-	pcb->lengthRegister = 0;
+	// Assigns random length
+	pcb->lengthRegister = randInt(MIN_ALLOC_PAGES, MAX_ALLOC_PAGES);
+
 }
 
 // Initializes a single pcb to default values
@@ -37,6 +40,23 @@ void initPcb(PCB * pcb, int simPid){
 	pcb->currentQueue = NULL;
 	pcb->next = NULL;
 	pcb->previous = NULL;
+}
+
+// Initializes a pcb not assigned to a running process and returns its simPid
+int  assignFreePcb(PCB * pcbs, pid_t realPid){
+	int simPid;
+	for (simPid = 0; simPid < MAX_RUNNING; simPid++){
+		if (pcbs[simPid].realPid == EMPTY){
+
+			// Assigns the first free pcb to the process
+			pcbs[simPid].realPid = realPid;
+
+			return simPid;
+		}
+	}
+
+	// Returns -1 if no pcb exists in the array without an assigned realPid
+	return -1;
 }
 
 // Initializes the shared array of pcbs to default values

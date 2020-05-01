@@ -26,7 +26,8 @@
 #include <unistd.h>
 
 // Prototypes
-//static void simulateMemoryManagement();
+static void simulateMemoryManagement();
+static void launchUserProcess();
 //static void waitForProcess(pid_t realPid);
 static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
@@ -40,13 +41,13 @@ static const Clock MAIN_LOOP_INCREMENT = {LOOP_INCREMENT_SEC,
 static const struct timespec SLEEP = {0, 500000};
 
 // Static global variables
-static char * shm;				// Pointer to shared memory
-static ProtectedClock * systemClock;		// Shared memory system clock
-static FrameDescriptor * frameTable;		// Shared memory frame table
-static PCB * pcbs;				// Shared process control blocks
+static char * shm;			// Pointer to shared memory
+static ProtectedClock * systemClock;	// Shared memory system clock
+static FrameDescriptor * frameTable;	// Shared memory frame table
+static PCB * pcbs;			// Shared process control blocks
 
 static int requestMqId;	// Id of message queue for resource requests & release
-static int replyMqId;		// Id of message queue for replies from oss
+static int replyMqId;	// Id of message queue for replies from oss
 
 int main(int argc, char * argv[]){
 	exeName = argv[0];	// Assigns exeName for perrorExit
@@ -70,7 +71,7 @@ int main(int argc, char * argv[]){
 	initPcbArray(pcbs);
 	
 	// Generates processes, grants requests, and resolves deadlock in a loop
-//	simulateMemoryManagement();
+	simulateMemoryManagement();
 
 //	logStats();
 
@@ -78,25 +79,24 @@ int main(int argc, char * argv[]){
 
 	return 0;
 }
-/*
+
 // Generates processes, grants requests, and resolves deadlock in a loop
 void simulateMemoryManagement(){
 	Clock timeToFork = zeroClock();		 // Time to launch user process 
 
 	int running = 0;			// Currently running child count
 	int launched = 0;			// Total children launched
-	int msg;				// Int representation of a msg
+//	int msg;				// Int representation of a msg
 
 	// Launches processes and resolves deadlock until limits reached
 	do {
 
-		// Launches user processes at random times
+		// Launches user processes at random times if within limits
 		if (clockCompare(getPTime(systemClock), timeToFork) >= 0){
 			 
-			// Launches process & records real pid if within limits
+			// Launches process if within limits
 			if (running < MAX_RUNNING && launched < MAX_LAUNCHED){
-				simPid = getLogicalPid(pidArray);
-				pidArray[simPid] = launchUserProcess(simPid);
+				launchUserProcess();
 
 				running++;
 				launched++;
@@ -106,7 +106,7 @@ void simulateMemoryManagement(){
 			incrementClock(&timeToFork, randomTime(MIN_FORK_TIME,
 							       MAX_FORK_TIME));
 		}
-
+/*
 		// Responds to new messages from the queue
 		while ((m = parseMessage()) != -1){
 			if (messages[m].type == REQUEST){
@@ -135,19 +135,20 @@ void simulateMemoryManagement(){
 			// Selects new time to detect deadlock
 			incrementClock(&timeToDetect, DETECTION_INTERVAL);
 		}
-
+*/
 		// Increments and unlocks the system clock
 		incrementPClock(systemClock, MAIN_LOOP_INCREMENT);
 
 		nanosleep(&SLEEP, NULL);
 
-	} while ((running > 0 || launched < MAX_LAUNCHED));
+	} while ((running > 0 || launched < MAX_LAUNCHED) && launched < MAX_RUNNING);
 
 }
 
 // Forks & execs a user process with the assigned logical pid, returns child pid
-static pid_t launchUserProcess(int simPid){
-	pid_t realPid;
+static void launchUserProcess(){
+	pid_t realPid;	// The real pid of the child process
+	int simPid;	// The logical pid of the process
 
 	// Forks, exiting on error
 	if ((realPid = fork()) == -1){
@@ -156,16 +157,21 @@ static pid_t launchUserProcess(int simPid){
 
 	// Child process calls execl on the user program binary
 	if (realPid == 0){
+
+		// Assigns a free process control block to the child process
+		if ((simPid = assignFreePcb(pcbs, realPid)) == -1)
+			perrorExit("launchUserProcess called with no free pcb");
+
+		// Converts simPid ot string
 		char sPid[BUFF_SZ];
 		sprintf(sPid, "%d", simPid);
 		
+		// Execs the child process
 		execl(USER_PROG_PATH, USER_PROG_PATH, sPid, NULL);
 		perrorExit("Failed to execl");
 	}
-
-	return realPid;
 }
-
+/*
 // Parses & returns the pid of a newly received message, or -1 if there are none
 static int parseMessage(){
 	char msgText[MSG_SZ];	// Raw text of each message

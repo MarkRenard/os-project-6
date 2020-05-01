@@ -17,6 +17,7 @@
 
 #define PAGE_SZ 1024			// Size of one page in bytes
 #define NUM_FRAMES 256			// Total frames in main memory
+#define MIN_ALLOC_PAGES 1		// Min number of pages per process
 #define MAX_ALLOC_PAGES 32		// Max number of pages per process
 
 #define BILLION 1000000000U		// The number of nanoseconds in a second
@@ -24,6 +25,7 @@
 #define BUFF_SZ 100			// The size of character buffers 
 #define MSG_SZ 30			// Size of qMsg char arrays
 
+#define EMPTY -1			// Generic sentinel for unset values
 
 // Used by oss.c
 #define MIN_FORK_TIME_SEC 0U		// Value of seconds in MIN_FORK_TIME
