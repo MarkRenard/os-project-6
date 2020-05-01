@@ -15,7 +15,7 @@
 #define MAX_RUNNING 18 	 		// Max number of running child processes
 #define MAX_LAUNCHED 100		// Max total children launched
 
-#define PAGE_SZ 1024			// Size of one page in bytes
+#define PAGE_SIZE 1024			// Size of one page in bytes
 #define NUM_FRAMES 256			// Total frames in main memory
 #define MIN_ALLOC_PAGES 1		// Min number of pages per process
 #define MAX_ALLOC_PAGES 32		// Max number of pages per process
@@ -26,6 +26,7 @@
 #define MSG_SZ 30			// Size of qMsg char arrays
 
 #define EMPTY -1			// Generic sentinel for unset values
+
 
 // Used by oss.c
 #define MIN_FORK_TIME_SEC 0U		// Value of seconds in MIN_FORK_TIME
@@ -43,12 +44,19 @@
 
 // Used by userProgram.c
 #define READ_PROBABILITY 0.8		// Chance of read instead of write
+
 #define MIN_REFERENCES 900		// Min references before terminating
 #define MAX_REFERENCES 1100		// Max before chance of termination
+
+#define MIN_REF_INTERVAL_SEC 0		// Min time between references sec
+#define MIN_REF_INTERVAL_NS 1		// Min time between references nanosec
+#define MAX_REF_INTERVAL_SEC 0		// Max time between references sec
+#define MAX_REF_INTERVAL_NS 10		// Max time between references nanosec
+
 #define TERMINATION_PROBABILITY 0.99	// Chance to terminate after references
 
 #define CLOCK_UPDATE_SEC 0		// System clock increment for user sec
-#define CLOCK_UPDATE_NS (50 * MILLION)	// System clock increment for user ns
+#define CLOCK_UPDATE_NS 10		// System clock increment for user ns
 
 
 // Used by both oss.c and userProgram.c
@@ -58,11 +66,11 @@
 
 #define BASE_SEED 39393984		// Used in calls to srand
 
-#define TERMINATE (MAX_ALLOC_PAGES * PAGE_SZ + 1)  // Termination sentinel
-#define NO_MESSAGE (MAX_ALLOC_PAGES * PAGE_SZ + 2) // No message sentinel
+#define TERMINATE (MAX_ALLOC_PAGES * PAGE_SIZE + 1)  // Termination sentinel
+#define NO_MESSAGE (MAX_ALLOC_PAGES * PAGE_SIZE + 2) // No message sentinel
 
 
-// Used by bitVector.c
+// Used by bitVector.c to track allocated frames
 #define NUM_BITS (sizeof(unsigned int) * 8)  // Bits per unsigned int
 #define MAX_VALUE (NUM_FRAMES - 1) 	   // Max int tracked in bit vector
 #define BIT_VECTOR_SIZE (MAX_VALUE / NUM_BITS + 1) // Size of bit vector

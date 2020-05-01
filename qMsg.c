@@ -47,7 +47,8 @@ void waitForMessage(int msgQueueId, char * msgText, long int type){
 			perrorExit("Error waiting for message");
 
 	// Copies message text
-	strcpy(msgText, msg.str);
+	if (msgText != NULL)
+		strcpy(msgText, msg.str);
 }
 
 // Checks to see if a message has been sent, doesn't block if not

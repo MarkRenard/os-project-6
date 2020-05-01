@@ -9,6 +9,7 @@
 
 #define BILLION 1000000000
 #define FORMAT "%03d : %09d"
+#define FORMAT_LN "%03d : %09d\n"
 
 // Returns a clock initialized to zero seconds, zero nanoseconds
 Clock zeroClock(){
@@ -132,6 +133,9 @@ void printTime(FILE * fp, const Clock clock){
 
 // Formats and prints the time on the clock to the file and a new line char
 void printTimeln(FILE * fp, const Clock clock){
-	printTime(fp, clock);
-	fprintf(fp, "\n");
+	fprintf(fp,
+		FORMAT_LN,
+		clock.seconds,
+		clock.nanoseconds
+	);
 }

@@ -21,143 +21,143 @@
 #include "sharedMemory.h"
 
 // Prototypes
-//static void signalTermination(int simPid);
-//static bool requestResources(ResourceDescriptor *, Message *, int);
-//static bool releaseResources(ResourceDescriptor *, Message *, int);
-//static int getRandomRNum();
-//static bool aSecondHasPassed(Clock now, Clock startTime);
-/*
+static void simulateMemoryReferencing();
+static int getAddress();
+static void makeReadReference(int address);
+static void makeWriteReference(int address);
+static void signalTermination();
+
 // Constants
-static const Clock MIN_CHECK = {MIN_CHECK_SEC, MIN_CHECK_NS};
-static const Clock MAX_CHECK = {MAX_CHECK_SEC, MAX_CHECK_NS};
-static const Clock MIN_RUN_TIME = {MIN_RUN_TIME_SEC, MIN_RUN_TIME_NS};
+static const Clock MIN_REF_INTERVAL = {MIN_REF_INTERVAL_SEC, 
+				       MIN_REF_INTERVAL_NS};
+static const Clock MAX_REF_INTERVAL = {MAX_REF_INTERVAL_SEC, 
+				       MAX_REF_INTERVAL_NS};
 static const Clock CLOCK_UPDATE = {CLOCK_UPDATE_SEC, CLOCK_UPDATE_NS};
-*/
+
 // Static global variables
 static char * shm;                              // Pointer to shared memory
 static ProtectedClock * systemClock;            // Shared memory system clock
 static FrameDescriptor * frameTable;            // Shared memory frame table
 static PCB * pcbs;                              // Shared process control blocks
 
+static int simPid;	// Logical pid of the process
 static int requestMqId; // Id of message queue for resource requests & release
 static int replyMqId;   // Id of message queue for replies from oss
 
 int main(int argc, char * argv[]){
 	exeName = argv[0];		// Sets exeName for perrorExit
-	int simPid = atoi(argv[1]);	// Gets process's logical pid
+	simPid = atoi(argv[1]);		// Gets process's logical pid
 	srand(BASE_SEED + simPid); 	// Seeds pseudorandom number generator
-/*
-        ProtectedClock * systemClock;	// Shared memory system clock
-        ResourceDescriptor * resources;	// Shared memory resource table
-        Message * messages;		// Shared memory message vector
 
-	Clock decisionTime;		// Time to request, relese, or terminate
-	Clock startTime;		// Time the process started
-	Clock now;			// Temp storage for time
-*/
-	// Attatches to shared memory and gets pointers
+	// Attaches to shared memory and gets pointers
 	getSharedMemoryPointers(&shm, &systemClock, &frameTable, &pcbs, 0);
 
-	// Initializes clocks
-/*
-	startTime = getPTime(systemClock);
-	decisionTime = startTime;
-*/
 	// Gets message queues
         requestMqId = getMessageQueue(REQUEST_MQ_KEY, MQ_PERMS | IPC_CREAT);
         replyMqId = getMessageQueue(REPLY_MQ_KEY, MQ_PERMS | IPC_CREAT);
 
+/*	// Debug
 	fprintf(stderr, "Child %d running! Max pages: %d\n", simPid, 
 		pcbs[simPid].lengthRegister);
 	Clock now = getPTime(systemClock);
 	fprintf(stderr, "Time: %03d : %09d\n\n", now.seconds, now.nanoseconds); 
-
-//	char reply[BUFF_SZ];
-/*
-	// Repeatedly requests or releases resources or terminates
-	bool terminating = false;
-	bool msgSent = false;	
-	while (!terminating) {
-
-		// Decides when current time is at or after decision time
-		now = getPTime(systemClock);
-		if (clockCompare(now, decisionTime) >= 0){
-
-			// Updates decision time
-			incrementClock(&decisionTime, 
-					randomTime(MIN_CHECK, MAX_CHECK));
-
-			// Decides whether to terminate
-			if (aSecondHasPassed(now, startTime) \
-			    && randBinary(TERMINATION_PROBABILITY)){
-				signalTermination(simPid);
-				terminating = true;
-				msgSent = true;
-
-			// Decides whether to request or release resources
-			} else if (randBinary(REQUEST_PROBABILITY)){
-				msgSent = requestResources(resources, messages,
-							   simPid);
-			} else {
-				msgSent = releaseResources(resources, messages,
-							   simPid);
-			}
-
-			// Increments the protected system clock
-			incrementPClock(systemClock, CLOCK_UPDATE);
-		}
-
-		// Waits for response to request
-		if (msgSent){
-			msgSent = false;
-
-			waitForMessage(replyMqId, reply, simPid + 1);
-
-			if (strcmp(reply, KILL_MSG) == 0){
-
-				terminating = true;
-			}
-		}
-	}
 */
+	simulateMemoryReferencing();
+
 	// Prepares to exit
+	signalTermination();
 	detach(shm);
 
 	return 0;
 }
-/*
-static void signalTermination(int simPid){
+
+// Repeatedly sents requests for memory references to oss
+static void simulateMemoryReferencing(){
+	Clock now = {0, 0};		// Storage for the currnet time
+	Clock referenceTime = {0, 0};	// Time at which to make a reference
+	int maxReferences; 		// References before termination chance
+	int numReferences = 0;		// References made since reset
+
+	// Randomly determines number of references (900 to 1100 by default)
+	maxReferences = randInt(MIN_REFERENCES, MAX_REFERENCES);
+
+	// Repeatedly makes read or write references and terminates
+	while (numReferences < maxReferences \
+	       || !randBinary(TERMINATION_PROBABILITY)) {
+
+		now = getPTime(systemClock);
+	
+		// Makes a reference at or after reference time
+		if (clockCompare(now, referenceTime) >= 0){
+
+			// Updates numReferences
+			numReferences = (numReferences + 1) \
+					% (maxReferences + 1);
+
+			// Updates reference time
+			copyTime(&referenceTime, now);
+			incrementClock(&referenceTime, 
+					randomTime(MIN_REF_INTERVAL, 
+						   MAX_REF_INTERVAL));
+
+			// Makes read or write reference 
+			if (randBinary(READ_PROBABILITY)){
+				makeReadReference(getAddress());
+			} else {
+				makeWriteReference(getAddress());
+			}
+
+			// Increments the protected system clock
+			incrementPClock(systemClock, CLOCK_UPDATE);
+
+			// Waits for reference to finish
+			waitForMessage(replyMqId, NULL, simPid + 1);
+		}
+	}
+}
+
+// Sends a request to oss to read from memory at a logical address
+static void makeReadReference(int address){
+
+	char addr[BUFF_SZ];
+	sprintf(addr, "%d", address);
+
+	fprintf(stderr, "\n\t\tP%d READING %s\n\n", simPid, addr);
+
+	sendMessage(requestMqId, addr, simPid + 1);
+}
+
+// Sends a request to oss to write to memory at a logical address
+static void makeWriteReference(int address){
+	char addr[BUFF_SZ];
+	sprintf(addr, "%d", ~address);
+
+	fprintf(stderr, "\n\t\tP%d WRITING %s\n\n", simPid, addr);
+
+	sendMessage(requestMqId, addr, simPid + 1);
+}
+
+// Returns a reference to an address in memory allocated to the process
+static int getAddress(){
+	return randInt(0, pcbs[simPid].lengthRegister * PAGE_SIZE - 1);
+}
+
+static void signalTermination(){
 	char msgBuff[BUFF_SZ];
-	sprintf(msgBuff, "0");
+	sprintf(msgBuff, "%d", TERMINATE);
+
+	fprintf(stderr, "\n\t\tP%d TERMINATING\n\n", simPid);
+
 	sendMessage(requestMqId, msgBuff, simPid + 1);
 }
 
+/*
 // Sends a message over a message queue requesting random resources
-static bool requestResources(ResourceDescriptor * resources, 
-			     Message * messages, int simPid){
+static bool requestResources( int simPid){
 	char msgBuff[BUFF_SZ];	// Message buffer
-	int rNum;		// Resource index
-	int maxRequest;		// Max quantity of requested resources
-	int quantity;		// Actual quantity requested
-	int encoded;		// Encoded message
 
-	// Randomly selects a resource to request
-	rNum = randInt(0, NUM_RESOURCES - 1);
-
-	// Computes maximum request
-	maxRequest = resources[rNum].numInstances - targetHeld[rNum];
-
-	// Returns if none can be requested
-	if (maxRequest == 0) return false;
-
-	// Randomly selects quantity to request
-	quantity = randInt(1, maxRequest);
-
-	// Records new target
-	targetHeld[rNum] += quantity;
-
-	// Endcodes resource index and quantity in a message
-	encoded = (MAX_INST + 1) * rNum + quantity;
+	// Endcodes logical address
+		
 
 	// Sends the message
 	sprintf(msgBuff, "%d", encoded);
@@ -201,7 +201,7 @@ static bool releaseResources(ResourceDescriptor * resources,
 // Gets a randomly chosen index of a held resource or -1 if no resources held
 static int getRandomRNum(){
 	int resourceCount;		// Number of resource classes held
-	int resInd[NUM_RESOURCES]; // Indices of held resources
+	int resInd[NUM_RESOURCES]; 	// Indices of held resources
 
 	// Records the indecies of held resources in resInd
 	int i = 0, j = 0;
@@ -215,15 +215,4 @@ static int getRandomRNum(){
 	// Returns the index of the randomly chosen resource
 	return resInd[randInt(0, resourceCount - 1)];
 }
-
-static bool aSecondHasPassed(Clock now, Clock startTime){
-	static bool hasPassed = false;
-
-	if (!hasPassed){
-		Clock diff = clockDiff(now, startTime);
-		hasPassed = (clockCompare(diff, MIN_RUN_TIME) >= 0);
-	}
-
-	return hasPassed;
-}	
 */

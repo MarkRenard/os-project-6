@@ -141,7 +141,7 @@ void simulateMemoryManagement(){
 
 		nanosleep(&SLEEP, NULL);
 
-	} while ((running > 0 || launched < MAX_LAUNCHED) && launched < MAX_RUNNING);
+	} while ((running > 0 || launched < MAX_LAUNCHED));// && launched < MAX_RUNNING);
 
 }
 
