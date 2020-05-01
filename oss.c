@@ -28,7 +28,11 @@
 // Prototypes
 static void simulateMemoryManagement();
 static void launchUserProcess();
-//static void waitForProcess(pid_t realPid);
+static int getParsedMessage(int, int*, int*);
+static void processTermination(int simPid);
+static void processRead(int simPid, int msg, Queue * q);
+static void processWrite(int simPid, int msg, Queue * q);
+static void waitForProcess(pid_t realPid);
 static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
 static void cleanUp();
@@ -82,11 +86,15 @@ int main(int argc, char * argv[]){
 
 // Generates processes, grants requests, and resolves deadlock in a loop
 void simulateMemoryManagement(){
-	Clock timeToFork = zeroClock();		 // Time to launch user process 
+	Clock timeToFork = zeroClock();	// Time to launch user process 
+	Queue  q;			// Queue of requesting processes
 
-	int running = 0;			// Currently running child count
-	int launched = 0;			// Total children launched
-//	int msg;				// Int representation of a msg
+	int running = 0;		// Currently running child count
+	int launched = 0;		// Total children launched
+	int msg;			// Int representation of a msg
+	int senderSimPid;		// simPid of message sender
+
+	initializeQueue(&q);
 
 	// Launches processes and resolves deadlock until limits reached
 	do {
@@ -106,6 +114,21 @@ void simulateMemoryManagement(){
 			incrementClock(&timeToFork, randomTime(MIN_FORK_TIME,
 							       MAX_FORK_TIME));
 		}
+
+		// Checks message queue for messages
+		while (getParsedMessage(requestMqId, &msg, &senderSimPid)){
+			if (msg == TERMINATE){
+				processTermination(senderSimPid);
+				running--;
+			}
+
+			else if (msg < 0) processWrite(senderSimPid, ~msg, &q);
+			else processRead(senderSimPid, msg, &q);
+		}
+
+		// Checks queue for 
+//		checkQueue(q);
+
 /*
 		// Responds to new messages from the queue
 		while ((m = parseMessage()) != -1){
@@ -171,6 +194,43 @@ static void launchUserProcess(){
 		perrorExit("Failed to execl");
 	}
 }
+
+// Checks message queue, returning 1 and retrieving message if one exists
+static int getParsedMessage(int mqId, int * msg, int * senderSimPid){
+	char msgBuff[BUFF_SZ];
+	long int msgType;
+
+	if(getMessage(mqId, msgBuff, &msgType)){
+		*msg = atoi(msgBuff);
+		*senderSimPid = (int) msgType - 1;
+
+		fprintf(stderr, "Got msg %d from %d\n", *msg, *senderSimPid);
+
+		return 1;
+	}
+
+//	fprintf(stderr, "No message!\n");
+
+	return 0;
+}
+
+static void processTermination(int simPid){
+	waitForProcess(pcbs[simPid].realPid);
+	resetPcb(&pcbs[simPid]);	
+}
+
+static void processWrite(int simPid, int msg, Queue * q){
+	fprintf(stderr, "oss processing P%d write to %d\n", simPid, msg);
+
+	sendMessage(replyMqId, "\0", simPid + 1);
+}
+
+static void processRead(int simPid, int msg, Queue * q){
+	fprintf(stderr, "oss processing P%d read from %d\n", simPid, msg);
+
+	sendMessage(replyMqId, "\0", simPid + 1);
+}
+
 /*
 // Parses & returns the pid of a newly received message, or -1 if there are none
 static int parseMessage(){
@@ -284,6 +344,7 @@ static void releaseResources(int * released, int simPid){
 		resources[r].allocations[simPid] = 0;
 	}
 }
+*/
 
 // Waits for the process with pid equal to the realPid parameter
 static void waitForProcess(pid_t realPid){
@@ -297,6 +358,7 @@ static void waitForProcess(pid_t realPid){
 
 }
 
+/*
 // Responds to a request for resources by granting it or enqueueing the request
 static void processRequest(int simPid){
 	Message * msg = &messages[simPid]; // The message to respond to

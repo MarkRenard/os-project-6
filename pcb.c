@@ -19,7 +19,6 @@ static void setDefaults(PCB * pcb){
 	for( ; i < MAX_ALLOC_PAGES; i++){
 		pcb->pageTable[i].valid = 0;
 		pcb->pageTable[i].dirty = 0;
-		pcb->pageTable[i].frameNumber = EMPTY;
 	}
 
 	// Assigns random length
@@ -43,7 +42,7 @@ void initPcb(PCB * pcb, int simPid){
 }
 
 // Initializes a pcb not assigned to a running process and returns its simPid
-int  assignFreePcb(PCB * pcbs, pid_t realPid){
+int assignFreePcb(PCB * pcbs, pid_t realPid){
 	int simPid;
 	for (simPid = 0; simPid < MAX_RUNNING; simPid++){
 		if (pcbs[simPid].realPid == EMPTY){

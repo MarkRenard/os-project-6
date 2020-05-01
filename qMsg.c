@@ -63,6 +63,7 @@ int getMessage(int msgQueueId, char * msgText, long int * type ){
 
 	strcpy(msgText, msg.str);
 	*type = msg.type;
+
 	return 1;
 
 }
