@@ -1,6 +1,6 @@
 OSS	= oss
-OSS_OBJ	= $(COMMON_O) oss.o #logging.o stats.o
-OSS_H	= $(COMMON_H) #logging.h stats.h
+OSS_OBJ	= $(COMMON_O) oss.o logging.o #stats.o
+OSS_H	= $(COMMON_H) logging.h #stats.h
 
 USER_PROG	= userProgram
 USER_PROG_OBJ	= $(COMMON_O) userProgram.o 

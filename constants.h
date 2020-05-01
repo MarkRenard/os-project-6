@@ -78,6 +78,6 @@
 
 // Used by logging.c
 #define LOG_FILE_NAME "oss_log"		// The name of the log file
-#define MAX_LOG_LINES 100000		// Max number of lines in the log file
+#define MAX_LOG_LINES 1000000		// Max number of lines in the log file
 
 #endif

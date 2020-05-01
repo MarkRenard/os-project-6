@@ -4,7 +4,7 @@
 
 #include "clock.h"
 #include "getSharedMemoryPointers.h"
-//#include "logging.h"
+#include "logging.h"
 #include "pcb.h"
 #include "frameDescriptor.h"
 #include "perrorExit.h"
@@ -42,7 +42,7 @@ static const Clock MIN_FORK_TIME = {MIN_FORK_TIME_SEC, MIN_FORK_TIME_NS};
 static const Clock MAX_FORK_TIME = {MAX_FORK_TIME_SEC, MAX_FORK_TIME_NS};
 static const Clock MAIN_LOOP_INCREMENT = {LOOP_INCREMENT_SEC,
 					  LOOP_INCREMENT_NS};
-static const struct timespec SLEEP = {0, 500000};
+static const struct timespec SLEEP = {0, 50000};
 
 // Static global variables
 static char * shm;			// Pointer to shared memory
@@ -68,6 +68,7 @@ int main(int argc, char * argv[]){
         requestMqId = getMessageQueue(REQUEST_MQ_KEY, MQ_PERMS | IPC_CREAT);
         replyMqId = getMessageQueue(REPLY_MQ_KEY, MQ_PERMS | IPC_CREAT);
 
+	openLogFile();
 //	initStats();
 
 	// Initializes system clock and shared arrays
@@ -162,7 +163,7 @@ void simulateMemoryManagement(){
 		// Increments and unlocks the system clock
 		incrementPClock(systemClock, MAIN_LOOP_INCREMENT);
 
-		nanosleep(&SLEEP, NULL);
+		//nanosleep(&SLEEP, NULL);
 
 	} while ((running > 0 || launched < MAX_LAUNCHED));// && launched < MAX_RUNNING);
 
@@ -204,7 +205,7 @@ static int getParsedMessage(int mqId, int * msg, int * senderSimPid){
 		*msg = atoi(msgBuff);
 		*senderSimPid = (int) msgType - 1;
 
-		fprintf(stderr, "Got msg %d from %d\n", *msg, *senderSimPid);
+		fprintf(stderr, "Got msg %d from P%d\n", *msg, *senderSimPid);
 
 		return 1;
 	}
@@ -215,18 +216,30 @@ static int getParsedMessage(int mqId, int * msg, int * senderSimPid){
 }
 
 static void processTermination(int simPid){
+	fprintf(stderr, "oss processing termintation of P%d\n", simPid);
+
+	logTermination(simPid, getPTime(systemClock));
+
 	waitForProcess(pcbs[simPid].realPid);
 	resetPcb(&pcbs[simPid]);	
 }
 
-static void processWrite(int simPid, int msg, Queue * q){
-	fprintf(stderr, "oss processing P%d write to %d\n", simPid, msg);
+static void processWrite(int simPid, int address, Queue * q){
+	fprintf(stderr, "oss processing P%d write to %d\n", simPid, address);
+
+	Clock now = getPTime(systemClock);
+	logWriteRequest(simPid, address, now);
+	logWriteGranted(address, 123, simPid, now);
 
 	sendMessage(replyMqId, "\0", simPid + 1);
 }
 
-static void processRead(int simPid, int msg, Queue * q){
-	fprintf(stderr, "oss processing P%d read from %d\n", simPid, msg);
+static void processRead(int simPid, int address, Queue * q){
+	fprintf(stderr, "oss processing P%d read from %d\n", simPid, address);
+
+	Clock now = getPTime(systemClock);
+	logReadRequest(simPid, address, now);
+	logReadGranted(address, 123, simPid, now);
 
 	sendMessage(replyMqId, "\0", simPid + 1);
 }
@@ -576,7 +589,7 @@ static void cleanUp(){
 	removeMessageQueue(requestMqId);
 	removeMessageQueue(replyMqId);
 
-//	closeLogFile();
+	closeLogFile();
 
 	// Detatches from and removes shared memory
 	detach(shm);
