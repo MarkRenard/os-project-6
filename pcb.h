@@ -17,6 +17,9 @@ typedef struct pageTableEntry{
 	unsigned char frameNumber;
 } PageTableEntry;
 
+// Defines types of reference a process can make
+//typedef enum RefType {READ_REFERENCE, WRITE_REFERENCE};
+
 struct queue;
 
 // Defines the process control block structure

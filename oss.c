@@ -97,6 +97,8 @@ void simulateMemoryManagement(){
 
 	initializeQueue(&q);
 
+	int i = 0;
+
 	// Launches processes and resolves deadlock until limits reached
 	do {
 
@@ -127,45 +129,14 @@ void simulateMemoryManagement(){
 			else processRead(senderSimPid, msg, &q);
 		}
 
-		// Checks queue for 
+		// Checks queue for requests 
 //		checkQueue(q);
 
-/*
-		// Responds to new messages from the queue
-		while ((m = parseMessage()) != -1){
-			if (messages[m].type == REQUEST){
-				processRequest(m);
-			} else if (messages[m].type == RELEASE) {
-				processRelease(m);
-			} else if (messages[m].type == TERMINATION){
-				processTermination(m, pidArray[m]);
-			
-				// Removes from running processes
-				pidArray[m] = EMPTY;
-				running--;
-			}
-		}
-
-		// Detects and resolves deadlock at regular intervals
-		if (clockCompare(getPTime(systemClock), timeToDetect) >= 0){
-			logDeadlockDetection(systemClock->time);
-
-			// Resolves deadlock
-			terminated = resolveDeadlock(pidArray, resources, 
-						   messages);
-			if (terminated > 0) processAllQueuedRequests();
-			running -= terminated;
-
-			// Selects new time to detect deadlock
-			incrementClock(&timeToDetect, DETECTION_INTERVAL);
-		}
-*/
-		// Increments and unlocks the system clock
+		// Increments system clock
 		incrementPClock(systemClock, MAIN_LOOP_INCREMENT);
 
-		//nanosleep(&SLEEP, NULL);
-
-	} while ((running > 0 || launched < MAX_LAUNCHED));// && launched < MAX_RUNNING);
+		i++;
+	} while ((running > 0 || launched < MAX_LAUNCHED));// && i < 100); //launched < 50); //MAX_RUNNING);
 
 }
 
@@ -234,130 +205,64 @@ static void processWrite(int simPid, int address, Queue * q){
 	sendMessage(replyMqId, "\0", simPid + 1);
 }
 
-static void processRead(int simPid, int address, Queue * q){
-	fprintf(stderr, "oss processing P%d read from %d\n", simPid, address);
+static void processRead(int simPid, int logicalAddress, Queue * q){
+	fprintf(stderr, "oss processing P%d read from %d\n", simPid, 
+		logicalAddress);
 
-	Clock now = getPTime(systemClock);
-	logReadRequest(simPid, address, now);
-	logReadGranted(address, 123, simPid, now);
+	Clock now;		// Storage for the current time
+
+	int pageNum;		// Page number of requested address
+	int offset;		// Offset of requested address
+	PageTableEntry * page;	// Page corresponding to the address
+
+//	int frameNumber;	// The physical frame number for the page
+	int physicalAddress;	// The requested physical address
+
+	// Logs request
+	now = getPTime(systemClock);
+	logReadRequest(simPid, logicalAddress, now);
+
+	// Gets page number
+	pageNum = logicalAddress / PAGE_SIZE;
+	
+	// Computes offset & gets page table entry for the logical address
+	offset = logicalAddress % PAGE_SIZE;
+	page = &pcbs[simPid].pageTable[pageNum];
+
+	// Gets the corresponding physical address
+	physicalAddress = page->frameNumber * PAGE_SIZE + offset;
+
+	fprintf(stderr, "oss: logical: %d page: %d frame: %d physical: %d\n",
+		logicalAddress, pageNum, page->frameNumber, physicalAddress);
+
+	// Kills the process if the address is illegal
+	if (pageNum >= pcbs[simPid].lengthRegister){
+	//	killProcess(simPid);
+		fprintf(stderr, "oss should kill P%d\n", simPid);
+		return;
+	}
+
+	// Enqueues the request if the page is invalid
+	if (!pcbs[simPid].pageTable[pageNum].valid) {
+	//	enqueueRequest(simPid, logicalAddress, q);
+		fprintf(stderr, "oss should enqueue P%d\n", simPid);
+	//	return;
+	}
+
+	// Grants the request otherwise
+//	grantRequest(simPid, logicalAddress);
+	
+	// Grants the request
+//	grantRequest
+	fprintf(stderr, "oss should grant the request for %d from P%d\n",
+		logicalAddress, simPid);
+	
+	logReadGranted(logicalAddress, page->frameNumber, simPid, now);
 
 	sendMessage(replyMqId, "\0", simPid + 1);
 }
 
-/*
-// Parses & returns the pid of a newly received message, or -1 if there are none
-static int parseMessage(){
-	char msgText[MSG_SZ];	// Raw text of each message
-	int msgInt;		// Integer form of each message
-	int rNum;		// The index of the resource
-	int quantity;		// Quantity requested or released
-
-	long int qMsgType;	// Raw type of msg
-	int simPid;		// simPid of sender
-
-	if (getMessage(requestMqId, msgText, &qMsgType)){
-		simPid = (int)(qMsgType - 1);	// Subtract 1 to get simPid
-		msgInt = atoi(msgText);		// Converts to encoded int
-
-		// Parses release messages
-		if (msgInt < 0){
-			quantity = -msgInt % (MAX_INST + 1);
-			rNum = -msgInt / (MAX_INST + 1);
-			messages[simPid].type = RELEASE;
-
-
-		// Parses request messages
-		} else if (msgInt > 0){
-			quantity = msgInt % (MAX_INST + 1);
-			rNum = msgInt / (MAX_INST + 1);
-			messages[simPid].type = REQUEST;
-
-			logRequestDetection(simPid, rNum, quantity, 
-					    systemClock->time);
-
-		// Parses termination messages
-		} else {
-			messages[simPid].type = TERMINATION;
-
-
-			return simPid;
-		}
-
-		// Sets values in shared array
-		messages[simPid].quantity = quantity;
-		messages[simPid].rNum = rNum;
-
-		return simPid;
-	}else{
-		// Returns -1 if no messages found in message queue
-		return -1;
-	}
-}
-
-// Messages a program to terminate, releases its resources, and writes to log
-void killProcess(int simPid, pid_t realPid){
-	int released[NUM_RESOURCES]; // Array of prevous resource allocations
-	
-	// Sends the message killing the process
-	sendMessage(replyMqId, KILL_MSG, simPid + 1);
-
-	// Releases and records previously held resources, calls waitpid
-	finalizeTermination(released, simPid, realPid);
-
-	// Logging
-	logKill(simPid);
-	logRelease(released);
-}
-
-// Releases resources of a finished process, waits, checks queues, writes to log
-static void processTermination(int simPid, pid_t realPid){
-
-	int released[NUM_RESOURCES]; // Array of prevous resource allocations
-
-	sendMessage(replyMqId, "termination confirmed", simPid + 1);
-
-	// Releases and records previously held resources, calls waitpid
-	finalizeTermination(released, simPid, realPid);
-
-	// Checks queued requests for released resources, grants if possible
-	processReleasedResourceQueues(released);
-
-	// Logging
-	logCompletion(simPid);
-#ifdef VERBOSE
-	logRelease(released);
-#endif
-
-}
-
-// Releases and records previously held resources, calls waitpid, resets message
-static void finalizeTermination(int * released, int simPid, pid_t realPid){
-
-	releaseResources(released, simPid);
-	waitForProcess(realPid);
-	resetMessage(&messages[simPid]);
-
-	// Validates the state of the simulated system
-	char buff[BUFF_SZ];
-	sprintf(buff, "finalizeTermination on proces %d", simPid);
-	validateState(buff);
-}
-
-// Counts resources previously held by the process as available, writes to array
-static void releaseResources(int * released, int simPid){
-	int r;
-	for (r = 0; r < NUM_RESOURCES; r++){
-		released[r] = resources[r].allocations[simPid];
-
-		// Increases numAvailable if the resoruce is not shared
-		if (!resources[r].shareable){
-			resources[r].numAvailable += \
-				resources[r].allocations[simPid];
-		}
-		resources[r].allocations[simPid] = 0;
-	}
-}
-*/
+//static void grantRequest
 
 // Waits for the process with pid equal to the realPid parameter
 static void waitForProcess(pid_t realPid){
@@ -370,162 +275,6 @@ static void waitForProcess(pid_t realPid){
                 perrorExit("waited for non-existent child");
 
 }
-
-/*
-// Responds to a request for resources by granting it or enqueueing the request
-static void processRequest(int simPid){
-	Message * msg = &messages[simPid]; // The message to respond to
-
-	// Grants request if it is less than available
-	if (msg->quantity <= resources[msg->rNum].numAvailable){
-		grantRequest(msg);
-
-	// Enqueues message otherwise
-	} else {
-
-		// Logs request denial
-		logEnqueue(simPid, msg->quantity, msg->rNum, 
-			resources[msg->rNum].numAvailable);
-
-		enqueue(&resources[msg->rNum].waiting, msg);
-		msg->type = PENDING_REQUEST;
-	}
-
-	// Validates the state of the simulated system
-	char buff[BUFF_SZ];
-	sprintf(buff, "processRequest(%d)", simPid);
-	validateState(buff);
-}
-
-// Examines a single request queue and grants old requests if able
-static void processQueuedRequests(int rNum){
-	Message * msg;				// Stores each queued message	
-	Queue * q = &resources[rNum].waiting;	// The queue to process
-	int qCount = q->count;			// Initial number in queue
-
-	int i = 0;
-	for ( ; i < qCount; i++){
-
-		msg = q->front;
-		if (msg == NULL)
-			perrorExit("processQueuedReuqest() - msg NULL");
-
-		if (msg->quantity <= 0)
-			perrorExit("processQueuedRequests() - request <= 0");
-
-		// Grants request if possible
-		if (msg->quantity <= resources[rNum].numAvailable){
-
-			grantRequest(msg);
-			dequeue(q);
-
-		// Re-enqueues if not
-		} else {
-
-			dequeue(q);
-			enqueue(q, msg);
-		}
-
-		// Validates the state of the simulated system
-		char buff[BUFF_SZ];
-		sprintf(buff, "processQueuedRequests(%d), iteration %d,", 
-			rNum, i);
-		validateState(buff);
-	}
-}
-
-// Grants a request for resources
-static void grantRequest(Message * msg){
-
-	// Increeases allocation and if not shareable, decreases availability
-	resources[msg->rNum].allocations[msg->simPid] += msg->quantity;
-	if (!resources[msg->rNum].shareable)
-		resources[msg->rNum].numAvailable -= msg->quantity;
-
-
-	// Prints granted request to log file
-	logAllocation(msg->simPid, msg->rNum, msg->quantity, 
-		      systemClock->time);
-
-	// Logs resource table every 20 granted requests by default
-	logTable(resources);
-
-	// Resets msg
-	msg->quantity = 0;
-	msg->type = VOID;
-	
-	// Validates the state of the simulated system
-	char buff[BUFF_SZ];
-	sprintf(buff, "grantRequest(msg P%d, %d of R%d)", msg->simPid, 
-		msg->quantity, msg->rNum);
-	validateState(buff);
-
-	// Replies with acknowlegement
-	sendMessage(replyMqId, "request confirmed", msg->simPid + 1);
-}
-
-// Calls processQueuedRequest on all resource numbers
-static void processAllQueuedRequests(){
-	int i = 0;
-	for ( ; i < NUM_RESOURCES; i++){
-		processQueuedRequests(i);
-	}
-}
-
-// Calls processQueuedRequest on resources in released vector
-static void processReleasedResourceQueues(int * released){
-	int i = 0;
-	for ( ; i < NUM_RESOURCES; i++){
-		if (released[i] > 0) processQueuedRequests(i);
-	}
-}
-
-// Releases resources from a process
-static void processRelease(int simPid){
-	Message * msg = &messages[simPid];
-
-	logResourceRelease(simPid, msg->rNum, msg->quantity, 
-			   systemClock->time);
-
-	resources[msg->rNum].allocations[simPid] -= msg->quantity;
-
-	if (!resources[msg->rNum].shareable)
-		resources[msg->rNum].numAvailable += msg->quantity;
-
-	msg->quantity = 0;
-	msg->type = VOID;
-
-	processAllQueuedRequests();
-
-	// Validates the state of the simulated system
-	char buff[BUFF_SZ];
-	sprintf(buff, "processRelease(%d)", simPid);
-	validateState(buff);
-
-	// Replies with acknowlegement
-	sendMessage(replyMqId, "release confirmed", simPid + 1);
-}
-
-// This function calls perrorExit if any allocation < 0 or allocation > existing
-static void validateState(char * functionName){
-	int i;
-	char buff[BUFF_SZ];
-
-	for (i = 0; i < NUM_RESOURCES; i++){
-		if (resources[i].numAvailable > resources[i].numInstances){
-			sprintf(buff, "After call to %s, %d of R%d are"\
-				" available, but only %d instances exist",
-				functionName, resources[i].numAvailable, i,
-				resources[i].numInstances);
-			perrorExit(buff);
-		} else if (resources[i].numAvailable < 0) {
-			sprintf(buff, "After call to %s, %d of R%d available",
-				functionName, resources[i].numAvailable, i);
-			perrorExit(buff); 
-		}
-	}
-}
-*/
 
 // Determines the processes response to ctrl + c or alarm
 static void assignSignalHandlers(){
@@ -569,6 +318,7 @@ static void cleanUpAndExit(int param){
 
 // Kills child processes, closes message queues & files, removes shared mem
 static void cleanUp(){
+
 	// Handles multiple interrupts by ignoring until exit
 	signal(SIGALRM, SIG_IGN);
 	signal(SIGINT, SIG_IGN);
@@ -589,6 +339,7 @@ static void cleanUp(){
 	removeMessageQueue(requestMqId);
 	removeMessageQueue(replyMqId);
 
+	// Closes log file
 	closeLogFile();
 
 	// Detatches from and removes shared memory
