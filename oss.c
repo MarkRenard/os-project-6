@@ -28,10 +28,12 @@
 // Prototypes
 static void simulateMemoryManagement();
 static void launchUserProcess();
-static int getParsedMessage(int, int*, int*);
+static int messageReceived(int*, int*);
 static void processTermination(int simPid);
-static void processRead(int simPid, int msg, Queue * q);
-static void processWrite(int simPid, int msg, Queue * q);
+static void processReference(int simPid, Queue * q);
+//static void enqueueRequest(int simPid, Queue * q);
+static void grantRequest(int simPid);
+//static void processWrite(int simPid, int msg, Queue * q);
 static void waitForProcess(pid_t realPid);
 static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
@@ -99,7 +101,7 @@ void simulateMemoryManagement(){
 
 	int i = 0;
 
-	// Launches processes and resolves deadlock until limits reached
+	// Launches processes, grants or enqueues requests, allocates pages
 	do {
 
 		// Launches user processes at random times if within limits
@@ -119,14 +121,16 @@ void simulateMemoryManagement(){
 		}
 
 		// Checks message queue for messages
-		while (getParsedMessage(requestMqId, &msg, &senderSimPid)){
+		while (messageReceived(&senderSimPid, &msg)){
+
+			// If process terminated, waits for it and frees memory
 			if (msg == TERMINATE){
 				processTermination(senderSimPid);
 				running--;
 			}
 
-			else if (msg < 0) processWrite(senderSimPid, ~msg, &q);
-			else processRead(senderSimPid, msg, &q);
+			// Grants or enqueues request for memory reference
+			else processReference(senderSimPid, &q);
 		}
 
 		// Checks queue for requests 
@@ -145,19 +149,18 @@ static void launchUserProcess(){
 	pid_t realPid;	// The real pid of the child process
 	int simPid;	// The logical pid of the process
 
+	// Gets the index of a pcb without a real pid assigned to it
+	if ((simPid = getFreePcbIndex(pcbs)) == -1)
+		perrorExit("launchUserProcess called with no free pcb");
+
 	// Forks, exiting on error
-	if ((realPid = fork()) == -1){
+	if ((realPid = fork()) == -1)
 		perrorExit("Failed to fork");
-	}
 
 	// Child process calls execl on the user program binary
 	if (realPid == 0){
 
-		// Assigns a free process control block to the child process
-		if ((simPid = assignFreePcb(pcbs, realPid)) == -1)
-			perrorExit("launchUserProcess called with no free pcb");
-
-		// Converts simPid ot string
+		// Converts simPid to string
 		char sPid[BUFF_SZ];
 		sprintf(sPid, "%d", simPid);
 		
@@ -165,25 +168,44 @@ static void launchUserProcess(){
 		execl(USER_PROG_PATH, USER_PROG_PATH, sPid, NULL);
 		perrorExit("Failed to execl");
 	}
+
+	// Assigns realPid to selected pcb in parent
+	pcbs[simPid].realPid = realPid;
+
 }
 
-// Checks message queue, returning 1 and retrieving message if one exists
-static int getParsedMessage(int mqId, int * msg, int * senderSimPid){
-	char msgBuff[BUFF_SZ];
-	long int msgType;
+// Checks message queue, returning 1 and parsing message to pcb if one exists
+static int messageReceived(int * senderSimPid, int * msg){
+	char msgBuff[BUFF_SZ];	// Buffer for storing the message
+	long int msgType;	// Storage for the message type
 
-	if(getMessage(mqId, msgBuff, &msgType)){
+	int address;	// Referenced address
+	RefType type;	// Referenced type
+
+	// Parses a message from the request message queue
+	if(getMessage(requestMqId, msgBuff, &msgType)){
+
+		// Converts message queue values
 		*msg = atoi(msgBuff);
 		*senderSimPid = (int) msgType - 1;
+
+		// Returns immediately if the process terminated
+		if (*msg == TERMINATE) return 1;
+
+		// Decodes the address and request type
+		address = (*msg < 0 ? ~*msg : *msg);
+		type = (*msg < 0 ? WRITE_REFERENCE : READ_REFERENCE);
+
+		// Sets the last reference in the sender pcb
+		setLastReferenceInPcb(&pcbs[*senderSimPid], address, type, 
+				      getPTime(systemClock));
 
 		fprintf(stderr, "Got msg %d from P%d\n", *msg, *senderSimPid);
 
 		return 1;
 	}
 
-//	fprintf(stderr, "No message!\n");
-
-	return 0;
+	return 0; // Returns 0 if no message was received
 }
 
 static void processTermination(int simPid){
@@ -195,45 +217,29 @@ static void processTermination(int simPid){
 	resetPcb(&pcbs[simPid]);	
 }
 
-static void processWrite(int simPid, int address, Queue * q){
-	fprintf(stderr, "oss processing P%d write to %d\n", simPid, address);
+// Checks the validity of a reference and grants it or enqueues or kills process
+static void processReference(int simPid, Queue * q){
+	int logicalAddress;	// Process's last requested logical address
+	int pageNum;		// Page number of requested address
+	//int offset;		// Offset of requested address
+	//PageTableEntry * page;	// Page corresponding to the address
 
-	Clock now = getPTime(systemClock);
-	logWriteRequest(simPid, address, now);
-	logWriteGranted(address, 123, simPid, now);
-
-	sendMessage(replyMqId, "\0", simPid + 1);
-}
-
-static void processRead(int simPid, int logicalAddress, Queue * q){
-	fprintf(stderr, "oss processing P%d read from %d\n", simPid, 
-		logicalAddress);
+	//int frameNumber;	// The physical frame number for the page
+	//int physicalAddress;	// The requested physical address
 
 	Clock now;		// Storage for the current time
 
-	int pageNum;		// Page number of requested address
-	int offset;		// Offset of requested address
-	PageTableEntry * page;	// Page corresponding to the address
-
-//	int frameNumber;	// The physical frame number for the page
-	int physicalAddress;	// The requested physical address
+	// Gets the referenced logical address
+	logicalAddress = pcbs[simPid].lastReference.address;
 
 	// Logs request
 	now = getPTime(systemClock);
 	logReadRequest(simPid, logicalAddress, now);
+	fprintf(stderr, "oss processing P%d reference to %d\n", simPid, 
+		logicalAddress);
 
 	// Gets page number
 	pageNum = logicalAddress / PAGE_SIZE;
-	
-	// Computes offset & gets page table entry for the logical address
-	offset = logicalAddress % PAGE_SIZE;
-	page = &pcbs[simPid].pageTable[pageNum];
-
-	// Gets the corresponding physical address
-	physicalAddress = page->frameNumber * PAGE_SIZE + offset;
-
-	fprintf(stderr, "oss: logical: %d page: %d frame: %d physical: %d\n",
-		logicalAddress, pageNum, page->frameNumber, physicalAddress);
 
 	// Kills the process if the address is illegal
 	if (pageNum >= pcbs[simPid].lengthRegister){
@@ -244,25 +250,61 @@ static void processRead(int simPid, int logicalAddress, Queue * q){
 
 	// Enqueues the request if the page is invalid
 	if (!pcbs[simPid].pageTable[pageNum].valid) {
-	//	enqueueRequest(simPid, logicalAddress, q);
-		fprintf(stderr, "oss should enqueue P%d\n", simPid);
-	//	return;
+		enqueue(q, &pcbs[simPid]);
+		fprintf(stderr, "oss enqueued P%d\n", simPid);
+		return;
 	}
 
 	// Grants the request otherwise
-//	grantRequest(simPid, logicalAddress);
-	
-	// Grants the request
-//	grantRequest
-	fprintf(stderr, "oss should grant the request for %d from P%d\n",
-		logicalAddress, simPid);
-	
-	logReadGranted(logicalAddress, page->frameNumber, simPid, now);
+	grantRequest(simPid);
 
-	sendMessage(replyMqId, "\0", simPid + 1);
+	// Logging
+	if (pcbs[simPid].lastReference.type == READ_REFERENCE){
+		logReadGranted(logicalAddress, 123 /*page->frameNumber*/, 
+		simPid, now);
+		fprintf(stderr, "granting read request for %d from P%d\n",
+			logicalAddress, simPid);
+	} else {
+		logWriteGranted(logicalAddress, 123 /* page->frameNumber*/, 
+		simPid, now);
+		fprintf(stderr, "granting write request for %d from P%d\n",
+			logicalAddress, simPid);
+	}
+
 }
+/*
+// Enqueues a pcb of a process blocked on I/O after a page fault
+static void enqueueRequest(int simPid, Queue * q){
+	PCB * pcb;	// The pcb to enqueue
 
-//static void grantRequest
+	// Sets enqueue time and adds to the queue
+	pcb = &pcbs[simPid];
+	enqueue(q, pcb);
+
+}
+*/
+// Allocates a frame to a process and sets the frame number in its page table 
+static void grantRequest(int simPid){
+	int logicalAddress;	// The requested logical address
+	int pageNum;		// Page number of requested address
+	int offset;		// Offset of requested address
+	PageTableEntry * page;	// Page corresponding to the address
+	int physicalAddress;	// The requested physical address
+	
+	// Gets requested logical address and computes page number and offset
+	logicalAddress = pcbs[simPid].lastReference.address;
+	pageNum = logicalAddress / PAGE_SIZE;
+	offset = logicalAddress % PAGE_SIZE;
+	page = &pcbs[simPid].pageTable[pageNum];
+
+	// Computes frame number and physical address
+	physicalAddress = page->frameNumber * PAGE_SIZE + offset;
+
+	// Sends reply message
+	sendMessage(replyMqId, "\0", simPid + 1);
+	fprintf(stderr, "oss: logical: %d page: %d frame: %d physical: %d\n",
+		logicalAddress, pageNum, page->frameNumber, physicalAddress);
+}
 
 // Waits for the process with pid equal to the realPid parameter
 static void waitForProcess(pid_t realPid){

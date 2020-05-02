@@ -8,6 +8,8 @@
 
 #include <stdbool.h>
 #include <sys/types.h>
+
+#include "clock.h"
 #include "constants.h"
 
 // Defines an entry in the page table of each process
@@ -18,7 +20,17 @@ typedef struct pageTableEntry{
 } PageTableEntry;
 
 // Defines types of reference a process can make
-//typedef enum RefType {READ_REFERENCE, WRITE_REFERENCE};
+typedef enum RefType {READ_REFERENCE, WRITE_REFERENCE} RefType;
+
+// Stores the virtual address, type, and start and times of a reference
+typedef struct reference {
+	int address;		// The referenced virtual address
+	RefType type;		// Whether the reference is read or write
+
+	Clock startTime;	// The time the memory reference started
+	Clock endTime;		// The time the reference was comlpeted
+	bool endTimeIsSet;	// Whether endTime has been set
+} Reference;
 
 struct queue;
 
@@ -31,6 +43,9 @@ typedef struct pcb{
 	PageTableEntry pageTable[MAX_ALLOC_PAGES];
 	int lengthRegister;		// The number of allocated pages
 
+	// The last memory reference the process made
+	Reference lastReference;
+
 	// Fields used in Queue for paging I/O
 	struct queue * currentQueue;	// Queue the pcb is currently in
 	struct pcb * next;		// Next pcb in current queue
@@ -38,10 +53,12 @@ typedef struct pcb{
 
 } PCB;
 
+// Function prototypes
 void initPcb(PCB *, int simPid);
-int assignFreePcb(PCB *, pid_t);
+int getFreePcbIndex(PCB * pcbs);
 void initPcbArray(PCB *);
 void resetPcb(PCB *);
+void setLastReferenceInPcb(PCB *, int address, RefType type, Clock startTime);
 
 #include "queue.h"
 #endif

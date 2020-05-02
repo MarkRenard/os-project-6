@@ -9,17 +9,22 @@
 #include "queue.h"
 #include "randomGen.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 
 // Sets non-queue values to defaults
 static void setDefaults(PCB * pcb){
 	pcb->realPid = EMPTY;
 
+	// Unsets valid and dirty indicators in page table
 	int i = 0;
 	for( ; i < MAX_ALLOC_PAGES; i++){
 		pcb->pageTable[i].valid = 0;
 		pcb->pageTable[i].dirty = 0;
 	}
+
+	// reference endTime is not set
+	pcb->lastReference.endTimeIsSet = false;
 
 	// Assigns random length
 	pcb->lengthRegister = randInt(MIN_ALLOC_PAGES, MAX_ALLOC_PAGES);
@@ -42,14 +47,10 @@ void initPcb(PCB * pcb, int simPid){
 }
 
 // Initializes a pcb not assigned to a running process and returns its simPid
-int assignFreePcb(PCB * pcbs, pid_t realPid){
+int getFreePcbIndex(PCB * pcbs){
 	int simPid;
 	for (simPid = 0; simPid < MAX_RUNNING; simPid++){
 		if (pcbs[simPid].realPid == EMPTY){
-
-			// Assigns the first free pcb to the process
-			pcbs[simPid].realPid = realPid;
-
 			return simPid;
 		}
 	}
@@ -75,4 +76,12 @@ void resetPcb(PCB * pcb){
 
 	if (pcb->currentQueue != NULL)
 		removeFromCurrentQueue(pcb);
+}
+
+// Sets the logical address and type of the last memory reference
+void setLastReferenceInPcb(PCB * pcb, int address, RefType type, 
+			   Clock startTime){
+	pcb->lastReference.address = address;
+	pcb->lastReference.type = type;
+	copyTime(&pcb->lastReference.startTime, startTime);
 }
