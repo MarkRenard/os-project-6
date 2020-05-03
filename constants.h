@@ -27,6 +27,9 @@
 
 #define EMPTY -1			// Generic sentinel for unset values
 
+#define IO_OPERATION_SEC 0		// Time taken to perform I/O seconds
+#define IO_OPERATION_NS (14 * MILLION)	// Time taken to perform I/O nanoseconds
+
 
 // Used by oss.c
 #define MIN_FORK_TIME_SEC 0U		// Value of seconds in MIN_FORK_TIME
@@ -40,6 +43,9 @@
 
 #define LOOP_INCREMENT_SEC 0		// System clock increment per loop sec
 #define LOOP_INCREMENT_NS (50 * MILLION)// System clock increment per loop ns
+
+#define MEM_ACCESS_SEC 0		// Time to access main memory seconds
+#define MEM_ACCESS_NS 10		// Time to access main memory nanosec
 
 
 // Used by userProgram.c

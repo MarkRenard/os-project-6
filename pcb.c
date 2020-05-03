@@ -12,6 +12,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+static const Clock MEM_ACCESS_TIME = {MEM_ACCESS_SEC, MEM_ACCESS_NS};
+
 // Sets non-queue values to defaults
 static void setDefaults(PCB * pcb){
 	pcb->realPid = EMPTY;
@@ -84,4 +86,10 @@ void setLastReferenceInPcb(PCB * pcb, int address, RefType type,
 	pcb->lastReference.address = address;
 	pcb->lastReference.type = type;
 	copyTime(&pcb->lastReference.startTime, startTime);
+}
+
+// Sets the time at which an I/O operation will complete
+void setIoCompletionTimeInPcb(PCB * pcb, Clock endTime){
+	copyTime(&pcb->lastReference.endTime, endTime);
+	pcb->lastReference.endTimeIsSet = true;
 }

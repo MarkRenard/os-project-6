@@ -59,6 +59,7 @@ int getFreePcbIndex(PCB * pcbs);
 void initPcbArray(PCB *);
 void resetPcb(PCB *);
 void setLastReferenceInPcb(PCB *, int address, RefType type, Clock startTime);
+void setIoCompletionTimeInPcb(PCB * pcb, Clock endTime);
 
 #include "queue.h"
 #endif

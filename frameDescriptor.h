@@ -9,13 +9,16 @@
 
 typedef struct frameDescriptor{
 	char simPid;	// simPid of the process to which the frame is allocated
+	char pageNum;	// pageNum corresponding to the frame in the page table
 	char reference; // Whether the frame was referenced recently
 	char dirty;	// Whether frame was written to since last disk write
 } FrameDescriptor;
 
+/*
 void readFrame(FrameDescriptor *);
 void writeFrame(FrameDescriptor *);
 void assignFrame(FrameDescriptor *, int simPid);
 void freeFrame(FrameDescriptor *);
+*/
 
 #endif
