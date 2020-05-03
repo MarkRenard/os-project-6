@@ -32,6 +32,7 @@ static void simulateMemoryManagement();
 static void launchUserProcess();
 static int messageReceived(int*, int*);
 static void processTermination(int simPid);
+static void deallocateFrames(PCB * pcb);
 static void processReference(int simPid, Queue * q);
 static void checkPagingQueue(Queue * q);
 static void allocateFrame(int frameNum, PCB * pcb);
@@ -142,14 +143,14 @@ void simulateMemoryManagement(){
 		}
 
 		// Increments system clock when all processes are waiting
-		if (q.count == MAX_RUNNING)
+		if (q.count == running)
 			incrementPClock(systemClock, IO_OP_TIME);
 
 		// Performs the clock replacement algorithm 
 		checkPagingQueue(&q);
 
 		// Increments system clock
-		incrementPClock(systemClock, MAIN_LOOP_INCREMENT);
+		// incrementPClock(systemClock, MAIN_LOOP_INCREMENT);
 
 		i++;
 	} while ((running > 0 || launched < MAX_LAUNCHED));// && i < 100); //launched < 50); //MAX_RUNNING);
@@ -220,38 +221,37 @@ static int messageReceived(int * senderSimPid, int * msg){
 	return 0; // Returns 0 if no message was received
 }
 
+// Logs termination, waits for terminated process, and deallocates frames
 static void processTermination(int simPid){
 	fprintf(stderr, "oss processing termintation of P%d\n", simPid);
-
 	logTermination(simPid, getPTime(systemClock));
-
 	waitForProcess(pcbs[simPid].realPid);
+	deallocateFrames(&pcbs[simPid]);
 	resetPcb(&pcbs[simPid]);	
+}
+
+// Deallocates all of the frames allocated to a process
+static void deallocateFrames(PCB * pcb){
+	int i;
+	for (i = 0; i < pcb->lengthRegister; i++){
+		deallocateFrame(pcb->pageTable[i].frameNumber);
+	}
 }
 
 // Checks the validity of a reference and grants it or enqueues or kills process
 static void processReference(int simPid, Queue * q){
-	int logicalAddress;	// Process's last requested logical address
+	Reference ref;		// The memory reference to process
 	int pageNum;		// Page number of requested address
-	//int offset;		// Offset of requested address
-	//PageTableEntry * page;	// Page corresponding to the address
 
-	//int frameNumber;	// The physical frame number for the page
-	//int physicalAddress;	// The requested physical address
-
-	Clock now;		// Storage for the current time
-
-	// Gets the referenced logical address
-	logicalAddress = pcbs[simPid].lastReference.address;
-
-	// Logs request
-	now = getPTime(systemClock);
-	logReadRequest(simPid, logicalAddress, now);
-	fprintf(stderr, "oss processing P%d reference to %d\n", simPid, 
-		logicalAddress);
+	// Gets the reference to process
+	ref = pcbs[simPid].lastReference;
 
 	// Gets page number
-	pageNum = logicalAddress / PAGE_SIZE;
+	pageNum = ref.address / PAGE_SIZE;
+
+	// Logs request
+	logRequest(simPid, ref, getPTime(systemClock));
+
 
 	// Kills the process if the address is illegal
 	if (pageNum >= pcbs[simPid].lengthRegister){
@@ -267,21 +267,24 @@ static void processReference(int simPid, Queue * q){
 		return;
 	}
 
-	// Grants the request otherwise
+	// Grants and logs the request otherwise
 	grantRequest(simPid);
+	logGrantedRequest(ref, pcbs[simPid].pageTable[pageNum].frameNumber,
+			  simPid, getPTime(systemClock));
 
-	// Logging
+/*
 	if (pcbs[simPid].lastReference.type == READ_REFERENCE){
-		logReadGranted(logicalAddress, 123 /*page->frameNumber*/, 
+		logReadGranted(logicalAddress, 123 *page->frameNumber*, 
 		simPid, now);
 		fprintf(stderr, "granting read request for %d from P%d\n",
 			logicalAddress, simPid);
 	} else {
-		logWriteGranted(logicalAddress, 123 /* page->frameNumber*/, 
+		logWriteGranted(logicalAddress, 123 * page->frameNumber*, 
 		simPid, now);
 		fprintf(stderr, "granting write request for %d from P%d\n",
 			logicalAddress, simPid);
 	}
+*/
 
 }
 
@@ -342,6 +345,9 @@ static void checkPagingQueue(Queue * q){
 static void allocateFrame(int frameNum, PCB * pcb){
 	int pageNum = pcb->lastReference.address / PAGE_SIZE;
 
+	// Updates bit vector
+	reserveInBitVector(frameNum);
+
 	// Updates page table
 	pcb->pageTable[pageNum].frameNumber = frameNum;
 	pcb->pageTable[pageNum].valid = 1;
@@ -355,6 +361,9 @@ static void allocateFrame(int frameNum, PCB * pcb){
 }
 
 static void deallocateFrame(int frameNum){
+
+	// updates bit vector
+	freeInBitVector(frameNum);
 
 	// Gets process and page indices from frame descriptor
 	int simPid = frameTable[frameNum].simPid;

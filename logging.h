@@ -15,6 +15,13 @@ void closeLogFile();
 // Logs when a process has terminated
 void logTermination(int simPid, Clock time);
 
+// Logs when a request was received by oss
+void logRequest(int simPid, Reference ref, Clock time);
+
+// Logs when a request is immediately granted by oss
+void logGrantedRequest(Reference ref, unsigned char frameNum, int simPid,
+		       Clock time);
+
 // Logs a request to read from an address at a particular time
 void logReadRequest(int simPid, int address, Clock time);
 

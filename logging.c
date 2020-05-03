@@ -5,6 +5,7 @@
 
 #include "clock.h"
 #include "constants.h"
+#include "pcb.h"
 #include "perrorExit.h"
 #include <stdio.h>
 
@@ -68,6 +69,32 @@ void logWriteGranted(int address, int frameNum, int simPid, Clock time){
 	fprintf(log, "Master: Address %d in frame %d, writing data from P%d " \
 		"to frame at time %03d : %09d\n", address, frameNum, simPid, 
 		time.seconds, time.nanoseconds);
+}
+
+// Logs when a request was received by oss
+void logRequest(int simPid, Reference ref, Clock time){
+        fprintf(stderr, "oss processing P%d reference to %d\n", simPid,
+                ref.address);
+
+	if (ref.type == READ_REFERENCE)
+		logReadRequest(simPid, ref.address, time);
+	else
+		logWriteRequest(simPid, ref.address, time);
+}
+
+// Logs when a request is immediately granted by oss
+void logGrantedRequest(Reference ref, unsigned char frameNum, int simPid,
+		       Clock time){
+
+	if (ref.type == READ_REFERENCE){
+		fprintf(stderr, "oss granting read request for %d from P%d",
+			ref.address, simPid);
+		logReadGranted(ref.address, frameNum, simPid, time);
+	} else {
+		fprintf(stderr, "oss granting write request for %d from P%d",
+			ref.address, simPid);
+		logWriteGranted(ref.address, frameNum, simPid, time);
+	}
 }
 
 // Logs a page fault event
