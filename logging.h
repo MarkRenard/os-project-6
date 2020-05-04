@@ -52,6 +52,9 @@ void logWriteIndication(int simPid, int address);
 // Logs that a queued read or wite reference was fulfilled
 void logGrantedQueuedRequest(int simPid, Reference ref);
 
+// Prints the memory map of the system to the log
+void logMemoryMap(const PCB * pcbs);
+
 /*
 // Logs the detection of a resource request
 void logRequestDetection(int simPid, int resourceId, int count, Clock time);

@@ -54,6 +54,10 @@ static const Clock MAX_FORK_TIME = {MAX_FORK_TIME_SEC, MAX_FORK_TIME_NS};
 static const Clock IO_OP_TIME = {IO_OPERATION_SEC, IO_OPERATION_NS};
 static const Clock MEM_ACCESS_TIME = {MEM_ACCESS_SEC, MEM_ACCESS_NS};
 
+static const Clock MEM_INT = {
+	MEM_MAP_PRINT_INTERVAL_SEC, MEM_MAP_PRINT_INTERVAL_NS
+};
+
 // static const struct timespec SLEEP = {0, 50000};
 
 // Static global variables
@@ -99,6 +103,7 @@ int main(int argc, char * argv[]){
 // Generates processes, grants requests, and resolves deadlock in a loop
 void simulateMemoryManagement(){
 	Clock timeToFork = zeroClock();	// Time to launch user process 
+	Clock timeToPrint = MEM_INT;	// Time to print memory map
 	Queue  q;			// Queue of requesting processes
 
 	int running = 0;		// Currently running child count
@@ -148,6 +153,12 @@ void simulateMemoryManagement(){
 
 		// Performs the clock replacement algorithm 
 		checkPagingQueue(&q);
+
+		// Prints the memory map if interval reached
+		if (clockCompare(timeToPrint, getPTime(systemClock)) <= 0){
+			logMemoryMap(pcbs);
+			incrementClock(&timeToPrint, MEM_INT);
+		}
 
 		i++;
 	} while ((running > 0 || launched < MAX_LAUNCHED));// && i < 100); //launched < 50); //MAX_RUNNING);

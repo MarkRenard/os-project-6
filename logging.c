@@ -154,6 +154,43 @@ void logGrantedQueuedRequest(int simPid, Reference ref){
 		logWriteIndication(simPid, ref.address);
 }
 
+// Prints the memory map of the system to the log
+void logMemoryMap(const PCB * pcbs){
+	if (lines + MAX_RUNNING + 2 > MAX_LOG_LINES) return;
+	int i, j;
+
+	// Prints frame numbers in header
+	fprintf(log, "\n     ");
+	for (j = 0; j < MAX_ALLOC_PAGES; j++)
+		fprintf(log, "%2d ", j);
+	fprintf(log, "\n");
+	lines += 2;
+
+	// Prints one row per process
+	for (i = 0; i < MAX_RUNNING; i++){
+
+		// Skips if the process is not running
+		if (pcbs[i].realPid == EMPTY) continue;
+
+		// Prints a row
+		fprintf(log, "P%2d: ", i);
+
+		for (j = 0; j < MAX_ALLOC_PAGES; j++){
+			if (j < pcbs[i].lengthRegister){
+				if (pcbs[i].pageTable[j].valid)
+					fprintf(log, " + ");
+				else
+					fprintf(log, " . ");
+			}
+		}
+		fprintf(log, "\n");
+		lines++;
+	}
+	fprintf(log, "\n");
+	lines++;	
+	
+}
+
 /*
 // Logs the detection of a resource request
 void logRequestDetection(int simPid, int resourceId, int count, Clock time){
