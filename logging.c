@@ -107,7 +107,7 @@ void logPageFault(int address){
 }
 
 // Logs swapping in of a page
-void logSwapping(int frameNum, int simPid, int pageNum){
+void logSwap(int frameNum, int simPid, int pageNum){
 	if (++lines > MAX_LOG_LINES) return;
 
 	fprintf(log, "Master: Clearing frame %d and swapping in P%d page %d\n",
@@ -136,6 +136,14 @@ void logWriteIndication(int simPid, int address){
 
 	fprintf(log, "Master: Indicating to P%d that write has happened to " \
 		"address %d\n", simPid, address);
+}
+
+// Logs that a queued read or wite reference was fulfilled
+void logGrantedQueuedRequest(int simPid, Reference ref){
+	if (ref.type == READ_REFERENCE)
+		logReadIndication(simPid, ref.address);
+	else
+		logWriteIndication(simPid, ref.address);
 }
 
 /*

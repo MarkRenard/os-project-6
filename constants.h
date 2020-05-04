@@ -51,8 +51,8 @@
 // Used by userProgram.c
 #define READ_PROBABILITY 0.8		// Chance of read instead of write
 
-#define MIN_REFERENCES 900		// Min references before terminating
-#define MAX_REFERENCES 1100		// Max before chance of termination
+#define MIN_REFERENCES 90		// Min references before terminating
+#define MAX_REFERENCES 110		// Max before chance of termination
 
 #define MIN_REF_INTERVAL_SEC 0		// Min time between references sec
 #define MIN_REF_INTERVAL_NS 1		// Min time between references nanosec

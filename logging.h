@@ -38,7 +38,19 @@ void logWriteGranted(int address, int frameNum, int simPid, Clock time);
 void logPageFault(int address);
 
 // Logs swapping in of a page
-void logSwapping(int frameNum, int simPid, int pageNum);
+void logSwap(int frameNum, int simPid, int pageNum);
+
+// Logs that a frame was dirty
+void logDirty(int frameNum);
+
+// Logs that a queued read request fulfillment was indicated to a process
+void logReadIndication(int simPid, int address);
+
+// Logs that a queued write request fulfillment was indicated to a process
+void logWriteIndication(int simPid, int address);
+
+// Logs that a queued read or wite reference was fulfilled
+void logGrantedQueuedRequest(int simPid, Reference ref);
 
 /*
 // Logs the detection of a resource request

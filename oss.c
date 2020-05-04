@@ -48,13 +48,13 @@ static void cleanUp();
 static const Clock MIN_FORK_TIME = {MIN_FORK_TIME_SEC, MIN_FORK_TIME_NS};
 static const Clock MAX_FORK_TIME = {MAX_FORK_TIME_SEC, MAX_FORK_TIME_NS};
 
-static const Clock MAIN_LOOP_INCREMENT = {LOOP_INCREMENT_SEC,
-					  LOOP_INCREMENT_NS};
+//static const Clock MAIN_LOOP_INCREMENT = {LOOP_INCREMENT_SEC,
+//					  LOOP_INCREMENT_NS};
 
 static const Clock IO_OP_TIME = {IO_OPERATION_SEC, IO_OPERATION_NS};
 static const Clock MEM_ACCESS_TIME = {MEM_ACCESS_SEC, MEM_ACCESS_NS};
 
-static const struct timespec SLEEP = {0, 50000};
+// static const struct timespec SLEEP = {0, 50000};
 
 // Static global variables
 static char * shm;			// Pointer to shared memory
@@ -148,9 +148,6 @@ void simulateMemoryManagement(){
 
 		// Performs the clock replacement algorithm 
 		checkPagingQueue(&q);
-
-		// Increments system clock
-		// incrementPClock(systemClock, MAIN_LOOP_INCREMENT);
 
 		i++;
 	} while ((running > 0 || launched < MAX_LAUNCHED));// && i < 100); //launched < 50); //MAX_RUNNING);
@@ -262,6 +259,7 @@ static void processReference(int simPid, Queue * q){
 
 	// Enqueues the request if the page is invalid
 	if (!pcbs[simPid].pageTable[pageNum].valid) {
+		logPageFault(ref.address);
 		enqueue(q, &pcbs[simPid]);
 		fprintf(stderr, "oss enqueued P%d\n", simPid);
 		return;
@@ -290,58 +288,100 @@ static void processReference(int simPid, Queue * q){
 
 // Performs the clock replacement algorithm on queued memory references 
 static void checkPagingQueue(Queue * q){
-	int frameNum;		// Frame number to allocate
+//	int freeFrameNum;	// Unallocated frame number
+//	int victimFrameNum;	// Frame number of frame to swap out
 	Clock completionTime;	// Time at which I/O will complete
+	int frameNum;		// Number of frame to reallocate
 
 	// Checks the progress of I/O if a frame was read or written
 	if (q->front != NULL && q->front->lastReference.endTimeIsSet) {
 
-		fprintf(stderr, "\t\t\t\tEND TIME IS SET!!!!!!\n");
+		fprintf(stderr, "\t\tEND TIME SET FOR P%d!!!!!!\n", 
+			q->front->simPid);
 
-		// Returns if I/O hasn't completed
+		// Returns if reference end time is in the future
 		if (clockCompare(q->front->lastReference.endTime, 
-				 getPTime(systemClock)) >= 0){
-			fprintf(stderr, "WHAT?! HOW!!!!???");
+				 getPTime(systemClock)) > 0){
+			fprintf(stderr, "\t\tEND TIME NOT ARRIVED\n");
 			return;
 		}
 
-		// Completes memory reference if I/O has completed
+		// Completes memory reference if read/write has completed
 		else {
 			grantRequest(q->front->simPid);
+			q->front->lastReference.endTimeIsSet = false;
+			logGrantedQueuedRequest(q->front->simPid, 
+						q->front->lastReference);
 			dequeue(q);
 		}
 	}
 
-	// Grants request at head while a frame is free
-	while (q->count > 0 && (frameNum = getIntFromBitVector()) != -1){
+	if (q->count > 0){
+
+		// Sets time swap will complete
+		copyTime(&completionTime, getPTime(systemClock));
+		incrementClock(&completionTime, IO_OP_TIME);
+		
+		// Gets available frame number or selects a victim frame
+		if ((frameNum = getIntFromBitVector()) == -1){
+			frameNum = selectVictim();
+		
+			// Logs the swap event
+			logSwap(frameNum, q->front->simPid,
+			        q->front->lastReference.address / PAGE_SIZE);
+
+			// Adds time to write frame if it is dirty
+			if (frameTable[frameNum].dirty){
+				logDirty(frameNum);
+				incrementClock(&completionTime, IO_OP_TIME);
+			}
+
+			// Sets completion time and deallocates frame
+			setIoCompletionTimeInPcb(q->front, completionTime);
+			deallocateFrame(frameNum);
+		}
+	
+		// Allocates the frame to the front of the queue
 		allocateFrame(frameNum, q->front);
+	}
+
+/*
+	// Grants request at head while a frame is free
+	while (q->count > 0 && (freeFrameNum = getIntFromBitVector()) != -1){
+		allocateFrame(freeFrameNum, q->front);
 		grantRequest(q->front->simPid);
+		logGrantedQueuedRequest(q->front->simPid, 
+					q->front->lastReference);
 		dequeue(q);
 	}
 	
-	// If all frames taken and queue not empty, selects victim & begins I/O
+	// If all frames taken and queue not empty, selects victim & begins swap
 	if (q->count > 0) {
+
+		// Uses clock algorithm to select victim frame number, logs swap
+		victimFrameNum = selectVictim();
+		logSwapping(victimFrameNum, q->front->simPid,
+			    q->front->lastReference.address / PAGE_SIZE);
 
 		// Starts I/O and sets completion time
 		copyTime(&completionTime, getPTime(systemClock));
 		incrementClock(&completionTime, IO_OP_TIME);
-		if (frameTable[frameNum].dirty)
+		if (frameTable[victimFrameNum].dirty){
 
 			// Doubles completion time if write to disk is necessary
+			logDirty(victimFrameNum);
 			incrementClock(&completionTime, IO_OP_TIME);
-
+		}
 		setIoCompletionTimeInPcb(q->front, completionTime);
-		
-		// Uses clock algorithm to select a victim frame number
-		frameNum = selectVictim();
 
 		// Re-allocates frame to process at front of queue
-		deallocateFrame(frameNum);
-		allocateFrame(frameNum, q->front);
+		deallocateFrame(victimFrameNum);
+		allocateFrame(victimFrameNum, q->front);
 	}
-
+*/
 }
 
+// Allocates a frame to a process
 static void allocateFrame(int frameNum, PCB * pcb){
 	int pageNum = pcb->lastReference.address / PAGE_SIZE;
 
@@ -360,6 +400,7 @@ static void allocateFrame(int frameNum, PCB * pcb){
 	frameTable[frameNum].dirty = 0;
 }
 
+// Deallocates a frame from a process
 static void deallocateFrame(int frameNum){
 
 	// updates bit vector
@@ -369,12 +410,9 @@ static void deallocateFrame(int frameNum){
 	int simPid = frameTable[frameNum].simPid;
 	int pageNum = frameTable[frameNum].pageNum;
 
-	// Error if frame already deallocated
-	if (simPid == EMPTY)
-		perrorExit("Tried to deallocate already deallocated frame");
-
-	// Dealocates frame in page table
-	pcbs[simPid].pageTable[pageNum].valid = 0;
+	// Deallocates frame in page table
+	if (simPid != EMPTY)
+		pcbs[simPid].pageTable[pageNum].valid = 0;
 
 	// Deallocates frame in frame table
 	frameTable[frameNum].simPid = EMPTY;
@@ -396,7 +434,7 @@ static int selectVictim(){
 	return randInt(0, NUM_FRAMES - 1);
 }
 
-// Allocates a frame to a process and sets the frame number in its page table 
+// Increments clock and sets reference and dirty bit if the operation was a write 
 static void grantRequest(int simPid){
 	int logicalAddress;	// The requested logical address
 	int pageNum;		// Page number of requested address
@@ -412,13 +450,19 @@ static void grantRequest(int simPid){
 
 	// Computes frame number and physical address
 	physicalAddress = page->frameNumber * PAGE_SIZE + offset;
-/*
+
 	// Sets dirty bits if operation was write operation
-	if (pcb->lastReference.type = WRITE_OPERATION){
-		frameTable[frameNum].dirty = 1;
-		pcb->pageTable[pageNum].di
+	if (pcbs[simPid].lastReference.type == WRITE_REFERENCE){
+		frameTable[page->frameNumber].dirty = 1;
+		page->dirty = 1;
 	}
-*/
+
+	// Sets reference
+	frameTable[page->frameNumber].reference = 1;
+
+	// Increments clock
+	incrementPClock(systemClock, MEM_ACCESS_TIME);
+
 	// Sends reply message
 	sendMessage(replyMqId, "\0", simPid + 1);
 	fprintf(stderr, "oss: logical: %d page: %d frame: %d physical: %d\n",
@@ -427,7 +471,6 @@ static void grantRequest(int simPid){
 
 // Waits for the process with pid equal to the realPid parameter
 static void waitForProcess(pid_t realPid){
-
         pid_t retval;
         while(((retval = waitpid(realPid, NULL, 0)) == -1)
                  && errno == EINTR);
