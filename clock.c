@@ -136,6 +136,12 @@ Clock clockDiv(Clock t, unsigned int n){
 	return q;		
 }
 
+// Returns the number of seconds represented by a Clock as a long double
+long double clockSeconds(Clock t){
+	return (long double)t.seconds + (long double)t.nanoseconds \
+		/ (long double)BILLION;
+}
+
 // Formats and prints the time on the clock to the file
 void printTime(FILE * fp, const Clock clock){
 	fprintf(fp,

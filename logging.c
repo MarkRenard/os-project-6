@@ -7,6 +7,7 @@
 #include "constants.h"
 #include "pcb.h"
 #include "perrorExit.h"
+#include "stats.h"
 #include <stdio.h>
 
 static FILE * log = NULL;
@@ -84,6 +85,9 @@ void logRequest(int simPid, Reference ref, Clock time){
         fprintf(stderr, "oss processing P%d reference to %d\n", simPid,
                 ref.address);
 
+	// Tracks number of memory accesses
+	statsMemoryAccess();
+
 	if (ref.type == READ_REFERENCE)
 		logReadRequest(simPid, ref.address, time);
 	else
@@ -93,6 +97,10 @@ void logRequest(int simPid, Reference ref, Clock time){
 // Logs when a request is immediately granted by oss
 void logGrantedRequest(Reference ref, unsigned char frameNum, int simPid,
 		       Clock time){
+
+	// Tracks total memory access time
+	statsAddMemoryAccessTime(clockDiff(time, ref.startTime));
+
 
 	if (ref.type == READ_REFERENCE){
 		fprintf(stderr, "oss granting read request for %d from P%d",
@@ -108,6 +116,9 @@ void logGrantedRequest(Reference ref, unsigned char frameNum, int simPid,
 // Logs a page fault event
 void logPageFault(int address){
 	if (++lines > MAX_LOG_LINES) return;
+
+	// Tracks page faults
+	statsPageFault();
 
 	fprintf(log, "Master: Address %d is not in a frame, pagefault\n", 
 		address);
@@ -190,6 +201,19 @@ void logMemoryMap(const PCB * pcbs){
 	lines++;	
 	
 }
+
+// Logs memory access statistics
+void logStats(Clock time){
+	Stats stats = getStats(time);
+
+	fprintf(log, "Number of memory accesses per second: %Lf\n" \
+		"Number of page faults per memory access: %Lf\n" \
+		"Average memory access speed: %Lf seconds per access",
+		stats.memoryAccessesPerSecond,
+		stats.pageFaultsPerMemoryAccess,
+		stats.averageMemoryAccessSpeed);
+}
+
 
 /*
 // Logs the detection of a resource request

@@ -55,6 +55,8 @@ void logGrantedQueuedRequest(int simPid, Reference ref);
 // Prints the memory map of the system to the log
 void logMemoryMap(const PCB * pcbs);
 
+// Logs memory access statistics
+void logStats(Clock time);
 /*
 // Logs the detection of a resource request
 void logRequestDetection(int simPid, int resourceId, int count, Clock time);

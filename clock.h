@@ -22,6 +22,7 @@ int clockCompare(const Clock clk1, const Clock clk2);
 Clock clockSum(Clock t1, Clock t2);
 Clock clockDiff(Clock t1, Clock t2);
 Clock clockDiv(Clock t, unsigned int n);
+long double clockSeconds(Clock t);
 long double clockRatio(Clock t1, Clock t2);
 void printTime(FILE * fp, const Clock clock);
 void printTimeln(FILE * fp, const Clock clock);

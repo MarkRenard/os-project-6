@@ -13,7 +13,7 @@
 #include "qMsg.h"
 #include "queue.h"
 #include "randomGen.h"
-//#include "stats.h"
+#include "stats.h"
 
 #include <errno.h>
 #include <pthread.h>
@@ -48,17 +48,12 @@ static void cleanUp();
 static const Clock MIN_FORK_TIME = {MIN_FORK_TIME_SEC, MIN_FORK_TIME_NS};
 static const Clock MAX_FORK_TIME = {MAX_FORK_TIME_SEC, MAX_FORK_TIME_NS};
 
-//static const Clock MAIN_LOOP_INCREMENT = {LOOP_INCREMENT_SEC,
-//					  LOOP_INCREMENT_NS};
-
 static const Clock IO_OP_TIME = {IO_OPERATION_SEC, IO_OPERATION_NS};
 static const Clock MEM_ACCESS_TIME = {MEM_ACCESS_SEC, MEM_ACCESS_NS};
 
 static const Clock MEM_INT = {
 	MEM_MAP_PRINT_INTERVAL_SEC, MEM_MAP_PRINT_INTERVAL_NS
 };
-
-// static const struct timespec SLEEP = {0, 50000};
 
 // Static global variables
 static char * shm;			// Pointer to shared memory
@@ -84,8 +79,6 @@ int main(int argc, char * argv[]){
         requestMqId = getMessageQueue(REQUEST_MQ_KEY, MQ_PERMS | IPC_CREAT);
         replyMqId = getMessageQueue(REPLY_MQ_KEY, MQ_PERMS | IPC_CREAT);
 
-//	initStats();
-
 	// Initializes system clock and shared arrays
 	initPClock(systemClock);
 	initPcbArray(pcbs);
@@ -93,7 +86,7 @@ int main(int argc, char * argv[]){
 	// Generates processes, performs paging, and 
 	simulateMemoryManagement();
 
-//	logStats();
+	logStats(getPTime(systemClock));
 
 	cleanUp();
 
@@ -281,20 +274,6 @@ static void processReference(int simPid, Queue * q){
 	logGrantedRequest(ref, pcbs[simPid].pageTable[pageNum].frameNumber,
 			  simPid, getPTime(systemClock));
 
-/*
-	if (pcbs[simPid].lastReference.type == READ_REFERENCE){
-		logReadGranted(logicalAddress, 123 *page->frameNumber*, 
-		simPid, now);
-		fprintf(stderr, "granting read request for %d from P%d\n",
-			logicalAddress, simPid);
-	} else {
-		logWriteGranted(logicalAddress, 123 * page->frameNumber*, 
-		simPid, now);
-		fprintf(stderr, "granting write request for %d from P%d\n",
-			logicalAddress, simPid);
-	}
-*/
-
 }
 
 // Performs the clock replacement algorithm on queued memory references 
@@ -356,40 +335,6 @@ static void checkPagingQueue(Queue * q){
 		allocateFrame(frameNum, q->front);
 	}
 
-/*
-	// Grants request at head while a frame is free
-	while (q->count > 0 && (freeFrameNum = getIntFromBitVector()) != -1){
-		allocateFrame(freeFrameNum, q->front);
-		grantRequest(q->front->simPid);
-		logGrantedQueuedRequest(q->front->simPid, 
-					q->front->lastReference);
-		dequeue(q);
-	}
-	
-	// If all frames taken and queue not empty, selects victim & begins swap
-	if (q->count > 0) {
-
-		// Uses clock algorithm to select victim frame number, logs swap
-		victimFrameNum = selectVictim();
-		logSwapping(victimFrameNum, q->front->simPid,
-			    q->front->lastReference.address / PAGE_SIZE);
-
-		// Starts I/O and sets completion time
-		copyTime(&completionTime, getPTime(systemClock));
-		incrementClock(&completionTime, IO_OP_TIME);
-		if (frameTable[victimFrameNum].dirty){
-
-			// Doubles completion time if write to disk is necessary
-			logDirty(victimFrameNum);
-			incrementClock(&completionTime, IO_OP_TIME);
-		}
-		setIoCompletionTimeInPcb(q->front, completionTime);
-
-		// Re-allocates frame to process at front of queue
-		deallocateFrame(victimFrameNum);
-		allocateFrame(victimFrameNum, q->front);
-	}
-*/
 }
 
 // Allocates a frame to a process
@@ -428,21 +373,21 @@ static void deallocateFrame(int frameNum){
 	// Deallocates frame in frame table
 	frameTable[frameNum].simPid = EMPTY;
 
-/*
-	if (frameTable[frameNum].simPid != EMPTY){
-		int simPid = frameTable[frameNum].simPid;
-		pcbs[simPid].pageTable[frameNum
-	}
-
-	frameTable[frameNum].simPid
-*/
 }
 
 // Returns the frame number of a victim frame
 static int selectVictim(){
+	static int headIndex = 0;
+
+	while(frameTable[headIndex].reference){
+		frameTable[headIndex].reference = 0;
+		headIndex = (headIndex + 1) % NUM_FRAMES;
+	}
+
+	return headIndex;
 
 	// Random selection for now
-	return randInt(0, NUM_FRAMES - 1);
+//	return randInt(0, NUM_FRAMES - 1);
 }
 
 // Increments clock and sets reference and dirty bit if the operation was a write 
