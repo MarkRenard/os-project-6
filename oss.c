@@ -221,7 +221,7 @@ static int messageReceived(int * senderSimPid, int * msg){
 // Logs termination, waits for terminated process, and deallocates frames
 static void processTermination(int simPid){
 	fprintf(stderr, "oss processing termintation of P%d\n", simPid);
-	logTermination(simPid, getPTime(systemClock));
+	logTermination(simPid, getPTime(systemClock), &pcbs[simPid]);
 	waitForProcess(pcbs[simPid].realPid);
 	deallocateFrames(&pcbs[simPid]);
 	resetPcb(&pcbs[simPid]);	
@@ -462,6 +462,9 @@ static void grantRequest(int simPid){
 
 	// Increments clock
 	incrementPClock(systemClock, MEM_ACCESS_TIME);
+
+	// Resets reference in pcb
+	completeReferenceInPcb(&pcbs[simPid], getPTime(systemClock));
 
 	// Sends reply message
 	sendMessage(replyMqId, "\0", simPid + 1);

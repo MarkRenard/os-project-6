@@ -13,7 +13,7 @@ void openLogFile();
 void closeLogFile();
 
 // Logs when a process has terminated
-void logTermination(int simPid, Clock time);
+void logTermination(int simPid, Clock time, const PCB * pcb);
 
 // Logs when a request was received by oss
 void logRequest(int simPid, Reference ref, Clock time);

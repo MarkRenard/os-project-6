@@ -99,14 +99,15 @@ Clock clockSum(Clock t1, Clock t2){
 
 // Returns the difference of two times (t1 - t2)
 Clock clockDiff(Clock t1, Clock t2){
-	t1.seconds -= t2.seconds;
 
-	t1.nanoseconds -= t2.nanoseconds;
-
-	if (t1.nanoseconds < 0){
+	// Performs borrowing if necessary
+	if (t1.nanoseconds < t2.nanoseconds){
 		t1.nanoseconds += BILLION;
 		t1.seconds -= 1;
 	}
+
+	t1.seconds -= t2.seconds;
+	t1.nanoseconds -= t2.nanoseconds;
 
 	return t1;
 }
@@ -120,6 +121,19 @@ long double clockRatio(Clock t1, Clock t2){
 	t2TotalNano = (unsigned long long)t2.seconds * BILLION + t2.nanoseconds;
 
 	return (long double)t1TotalNano / (long double)t2TotalNano;
+}
+
+// Returns a time divided by an integer
+Clock clockDiv(Clock t, unsigned int n){
+	Clock q;
+
+	q.seconds = t.seconds / n;
+	q.nanoseconds = (BILLION * t.seconds % n) / n;
+	q.nanoseconds += t.nanoseconds / n;
+
+	carry(&q);
+
+	return q;		
 }
 
 // Formats and prints the time on the clock to the file

@@ -46,6 +46,10 @@ typedef struct pcb{
 	// The last memory reference the process made
 	Reference lastReference;
 
+	// Statistics
+	Clock totalAccessTime;		// Total time spent accessing memory
+	unsigned int totalReferences;	// Total number of memory references
+
 	// Fields used in Queue for paging I/O
 	struct queue * currentQueue;	// Queue the pcb is currently in
 	struct pcb * next;		// Next pcb in current queue
@@ -60,6 +64,8 @@ void initPcbArray(PCB *);
 void resetPcb(PCB *);
 void setLastReferenceInPcb(PCB *, int address, RefType type, Clock startTime);
 void setIoCompletionTimeInPcb(PCB * pcb, Clock endTime);
+void completeReferenceInPcb(PCB * pcb, Clock refCompletionTime);
+Clock getEatFromPcb(const PCB * pcb);
 
 #include "queue.h"
 #endif

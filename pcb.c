@@ -25,11 +25,15 @@ static void setDefaults(PCB * pcb){
 		pcb->pageTable[i].dirty = 0;
 	}
 
-	// reference endTime is not set
+	// Reference endTime is not set
 	pcb->lastReference.endTimeIsSet = false;
 
 	// Assigns random length
 	pcb->lengthRegister = randInt(MIN_ALLOC_PAGES, MAX_ALLOC_PAGES);
+
+	// Initializes statistics
+	pcb->totalAccessTime = zeroClock();
+	pcb->totalReferences = 0;
 
 }
 
@@ -92,4 +96,24 @@ void setLastReferenceInPcb(PCB * pcb, int address, RefType type,
 void setIoCompletionTimeInPcb(PCB * pcb, Clock endTime){
 	copyTime(&pcb->lastReference.endTime, endTime);
 	pcb->lastReference.endTimeIsSet = true;
+}
+
+// Adds access time to accululator and increments the number of accesses
+void completeReferenceInPcb(PCB * pcb, Clock refCompletionTime){
+
+	// Adds elapsed time durring last reference to total
+	Clock elapsed = clockDiff(refCompletionTime,
+				  pcb->lastReference.startTime);
+	incrementClock(&pcb->totalAccessTime, elapsed);
+
+	// Increments total number of references
+	pcb->totalReferences += 1;
+
+	// Indicates last end time is invalid
+	pcb->lastReference.endTimeIsSet = false;
+}
+
+// Returns effective memory access time
+Clock getEatFromPcb(const PCB * pcb){
+	return clockDiv(pcb->totalAccessTime, pcb->totalReferences);
 }

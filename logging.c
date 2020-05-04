@@ -27,11 +27,19 @@ void closeLogFile(){
 }
 
 // Logs when a process has terminated
-void logTermination(int simPid, Clock time){
-	if (++lines > MAX_LOG_LINES) return;
+void logTermination(int simPid, Clock time, const PCB * pcb){
+	lines += 2;
+	if (lines > MAX_LOG_LINES) return;
+
+	Clock eat = getEatFromPcb(pcb);
 
 	fprintf(log, "Master: P%d has terminated at time %03d : %09d\n",
 		simPid, time.seconds, time.nanoseconds);
+
+	fprintf(log, "\t\t Effective memory access time: %03d : %09d\n",
+		eat.seconds, eat.nanoseconds);
+
+	
 }
 
 // Logs a request to read from an address at a particular time
