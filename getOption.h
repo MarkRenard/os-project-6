@@ -6,6 +6,6 @@
 #ifndef GETOPTION_H
 #define GETOPTION_H
 
-int getOption(int argc, char * argv[]);
+char * getOption(int argc, char * argv[]);
 
 #endif

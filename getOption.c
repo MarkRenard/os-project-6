@@ -20,28 +20,36 @@ static void printUsageExit(){
 	exit(1);
 }
 
+// True if optarg is neither "0" nor "1"
+static int invalidOptarg(char * optarg){
+	return strcmp("0", optarg) != 0 && strcmp("1", optarg) != 0;
+}
+
 // Returns the optarg the user enters after argument -m or exits with usage msg
-int getOption(int argc, char * argv[]){
+char * getOption(int argc, char * argv[]){
 	int option;
-	int arg = -1;
+	char * arg = NULL;
 
 	// Retreives options, checking for invalid arguments
 	while((option = getopt(argc, argv, "m:")) != -1){
 		switch (option){
 		case 'm':
-			if (optarg[0] != '0' && optarg[0] != '1')
-				printUsageExit();
-			arg = atoi(optarg);
+
+			// Prints usage message and exits if optarg invalid
+			if (invalidOptarg(optarg)) printUsageExit();
+
+			// Copies optarg
+			arg = optarg;	
 			break;
+
 		default:
 			printUsageExit();
 		}
 	}
 
-	// Exits with usage message if a valid optino argument wasn't entered
-	if (!(arg == 0 || arg == 1)){
-		printUsageExit();
-	}
-
+	// Prints usage message and exits if no valid optarg entered
+	if (arg == NULL) printUsageExit();
+	
 	return arg;
+
 }

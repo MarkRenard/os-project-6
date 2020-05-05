@@ -65,16 +65,17 @@ static PCB * pcbs;			// Shared process control blocks
 static int requestMqId;	// Id of message queue for resource requests & release
 static int replyMqId;	// Id of message queue for replies from oss
 
-static int weighted;	// Indicates weighted address distribution if non-zero
+static char * weighted;	// Indicates weighted address distribution if non-zero
 
 int main(int argc, char * argv[]){
 	exeName = argv[0];	// Assigns exeName for perrorExit
 	assignSignalHandlers(); // Sets response to ctrl + C & alarm
 	openLogFile();		// Opens file written to in logging.c
 
-	weighted = getOption(argc, argv);
-
 	srand(BASE_SEED - 1);   // Seeds pseudorandom number generator
+
+	// Gets user-entered option that determines whether to weight references
+	weighted = getOption(argc, argv);
 
 	// Creates shared memory region and gets pointers
 	getSharedMemoryPointers(&shm, &systemClock, &frameTable, &pcbs, 
@@ -88,9 +89,10 @@ int main(int argc, char * argv[]){
 	initPClock(systemClock);
 	initPcbArray(pcbs);
 	
-	// Generates processes, performs paging, and 
+	// Generates processes and simulates paging 
 	simulateMemoryManagement();
 
+	// Prints statistics to log file
 	logStats(getPTime(systemClock));
 
 	cleanUp();
@@ -110,8 +112,6 @@ void simulateMemoryManagement(){
 	int senderSimPid;		// simPid of message sender
 
 	initializeQueue(&q);
-
-	int i = 0;
 
 	// Launches processes, grants or enqueues requests, allocates pages
 	do {
@@ -158,9 +158,7 @@ void simulateMemoryManagement(){
 			incrementClock(&timeToPrint, MEM_INT);
 		}
 
-		i++;
-	} while ((running > 0 || launched < MAX_LAUNCHED));// && i < 100); //launched < 50); //MAX_RUNNING);
-
+	} while ((running > 0 || launched < MAX_LAUNCHED));
 }
 
 // Forks & execs a user process with the assigned logical pid, returns child pid
@@ -184,7 +182,7 @@ static void launchUserProcess(){
 		sprintf(sPid, "%d", simPid);
 		
 		// Execs the child process
-		execl(USER_PROG_PATH, USER_PROG_PATH, sPid, NULL);
+		execl(USER_PROG_PATH, USER_PROG_PATH, sPid, weighted, NULL);
 		perrorExit("Failed to execl");
 	}
 
@@ -283,8 +281,6 @@ static void processReference(int simPid, Queue * q){
 
 // Performs the clock replacement algorithm on queued memory references 
 static void checkPagingQueue(Queue * q){
-//	int freeFrameNum;	// Unallocated frame number
-//	int victimFrameNum;	// Frame number of frame to swap out
 	Clock completionTime;	// Time at which I/O will complete
 	int frameNum;		// Number of frame to reallocate
 
@@ -380,7 +376,7 @@ static void deallocateFrame(int frameNum){
 
 }
 
-// Returns the frame number of a victim frame
+// Returns the frame number of a victim frame using clock replacement
 static int selectVictim(){
 	static int headIndex = 0;
 
@@ -390,9 +386,6 @@ static int selectVictim(){
 	}
 
 	return headIndex;
-
-	// Random selection for now
-//	return randInt(0, NUM_FRAMES - 1);
 }
 
 // Increments clock and sets reference and dirty bit if the operation was a write 

@@ -41,27 +41,23 @@ static FrameDescriptor * frameTable;            // Shared memory frame table
 static PCB * pcbs;                              // Shared process control blocks
 
 static int simPid;	// Logical pid of the process
+static int weighted;	// Whether the random address selection is weighted
 static int requestMqId; // Id of message queue for resource requests & release
 static int replyMqId;   // Id of message queue for replies from oss
 
 int main(int argc, char * argv[]){
 	exeName = argv[0];		// Sets exeName for perrorExit
 	simPid = atoi(argv[1]);		// Gets process's logical pid
+	weighted = atoi(argv[2]);	// Gets flag for address weighting
 	srand(BASE_SEED + simPid); 	// Seeds pseudorandom number generator
 
 	// Attaches to shared memory and gets pointers
 	getSharedMemoryPointers(&shm, &systemClock, &frameTable, &pcbs, 0);
 
 	// Gets message queues
-        requestMqId = getMessageQueue(REQUEST_MQ_KEY, MQ_PERMS | IPC_CREAT);
-        replyMqId = getMessageQueue(REPLY_MQ_KEY, MQ_PERMS | IPC_CREAT);
+        requestMqId = getMessageQueue(REQUEST_MQ_KEY, MQ_PERMS);
+        replyMqId = getMessageQueue(REPLY_MQ_KEY, MQ_PERMS);
 
-/*	// Debug
-	fprintf(stderr, "Child %d running! Max pages: %d\n", simPid, 
-		pcbs[simPid].lengthRegister);
-	Clock now = getPTime(systemClock);
-	fprintf(stderr, "Time: %03d : %09d\n\n", now.seconds, now.nanoseconds); 
-*/
 	simulateMemoryReferencing();
 
 	// Prepares to exit

@@ -13,7 +13,7 @@
 
 // Miscelaneous
 #define MAX_RUNNING 18 	 		// Max number of running child processes
-#define MAX_LAUNCHED 100		// Max total children launched
+#define MAX_LAUNCHED 50			// Max total children launched
 
 #define PAGE_SIZE 1024			// Size of one page in bytes
 #define NUM_FRAMES 256			// Total frames in main memory
