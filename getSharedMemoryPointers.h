@@ -14,6 +14,7 @@
 #include "sharedMemory.h"
 
 int getSharedMemoryPointers(char ** shm,  ProtectedClock ** systemClock,
-                            FrameDescriptor ** frameTable, PCB ** pcbs, int flags);
+                            FrameDescriptor ** frameTable, PCB ** pcbs, 
+			    int ** weights, int flags);
 
 #endif

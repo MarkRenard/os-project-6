@@ -22,6 +22,7 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -40,6 +41,7 @@ static void allocateFrame(int frameNum, PCB * pcb);
 static void deallocateFrame(int frameNum);
 static int selectVictim();
 static void grantRequest(int simPid);
+static void initWeights(int * weights);
 static void waitForProcess(pid_t realPid);
 static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
@@ -61,6 +63,7 @@ static char * shm;			// Pointer to shared memory
 static ProtectedClock * systemClock;	// Shared memory system clock
 static FrameDescriptor * frameTable;	// Shared memory frame table
 static PCB * pcbs;			// Shared process control blocks
+static int * weights;			// Shared array of page num weights
 
 static int requestMqId;	// Id of message queue for resource requests & release
 static int replyMqId;	// Id of message queue for replies from oss
@@ -79,15 +82,19 @@ int main(int argc, char * argv[]){
 
 	// Creates shared memory region and gets pointers
 	getSharedMemoryPointers(&shm, &systemClock, &frameTable, &pcbs, 
-				IPC_CREAT);
+				&weights, IPC_CREAT);
 
         // Creates message queues
         requestMqId = getMessageQueue(REQUEST_MQ_KEY, MQ_PERMS | IPC_CREAT);
         replyMqId = getMessageQueue(REPLY_MQ_KEY, MQ_PERMS | IPC_CREAT);
 
-	// Initializes system clock and shared arrays
+	// Initializes system clock and shared array of pcbs
 	initPClock(systemClock);
 	initPcbArray(pcbs);
+
+	// Initializes array of weights if option set
+	if (strcmp(weighted, "1"))
+		initWeights(weights);
 	
 	// Generates processes and simulates paging 
 	simulateMemoryManagement();
@@ -424,6 +431,11 @@ static void grantRequest(int simPid){
 	sendMessage(replyMqId, "\0", simPid + 1);
 	fprintf(stderr, "oss: logical: %d page: %d frame: %d physical: %d\n",
 		logicalAddress, pageNum, page->frameNumber, physicalAddress);
+}
+
+// Initializes an array of weights for address selection in child processes
+static void initWeights(int * weights){
+	fprintf(stderr, "initWeights called");	
 }
 
 // Waits for the process with pid equal to the realPid parameter

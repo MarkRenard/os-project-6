@@ -13,12 +13,13 @@
 
 int getSharedMemoryPointers(char ** shm,  ProtectedClock ** systemClock,
 			     FrameDescriptor ** frameTable,
-			     PCB ** pcbs, int flags) {
+			     PCB ** pcbs, int ** weights, int flags) {
 
 	// Computes size of the shared memory region
 	int shmSize = sizeof(ProtectedClock) \
 		      + sizeof(FrameDescriptor) * NUM_FRAMES \
-                      + sizeof(PCB) * MAX_RUNNING;
+                      + sizeof(PCB) * MAX_RUNNING \
+		      + sizeof(int) * MAX_ALLOC_PAGES;
 
  	// Attaches to shared memory
         *shm = sharedMemory(shmSize, flags);
@@ -32,6 +33,9 @@ int getSharedMemoryPointers(char ** shm,  ProtectedClock ** systemClock,
 	// Gets pointer to message array
 	*pcbs = (PCB *)( ((char*)(*frameTable)) \
 		     + (sizeof(FrameDescriptor) * NUM_FRAMES));
+
+	// Gets pointer to array of weights
+	*weights = (int *)(*pcbs + MAX_RUNNING);
 
 	return shmSize;
 }

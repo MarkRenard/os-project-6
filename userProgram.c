@@ -39,6 +39,7 @@ static char * shm;                              // Pointer to shared memory
 static ProtectedClock * systemClock;            // Shared memory system clock
 static FrameDescriptor * frameTable;            // Shared memory frame table
 static PCB * pcbs;                              // Shared process control blocks
+static int * weights;
 
 static int simPid;	// Logical pid of the process
 static int weighted;	// Whether the random address selection is weighted
@@ -52,7 +53,8 @@ int main(int argc, char * argv[]){
 	srand(BASE_SEED + simPid); 	// Seeds pseudorandom number generator
 
 	// Attaches to shared memory and gets pointers
-	getSharedMemoryPointers(&shm, &systemClock, &frameTable, &pcbs, 0);
+	getSharedMemoryPointers(&shm, &systemClock, &frameTable, &pcbs, 
+				&weights, 0);
 
 	// Gets message queues
         requestMqId = getMessageQueue(REQUEST_MQ_KEY, MQ_PERMS);
