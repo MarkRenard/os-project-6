@@ -15,6 +15,6 @@
 
 int getSharedMemoryPointers(char ** shm,  ProtectedClock ** systemClock,
                             FrameDescriptor ** frameTable, PCB ** pcbs, 
-			    int ** weights, int flags);
+			    double ** weights, int flags);
 
 #endif

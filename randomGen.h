@@ -9,5 +9,5 @@
 unsigned int randUnsigned(unsigned int min, unsigned int max);
 int randInt(int min, int max);
 int randBinary(double probability);
-
+double randDouble(double min, double max);
 #endif

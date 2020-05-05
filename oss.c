@@ -41,7 +41,7 @@ static void allocateFrame(int frameNum, PCB * pcb);
 static void deallocateFrame(int frameNum);
 static int selectVictim();
 static void grantRequest(int simPid);
-static void initWeights(int * weights);
+static void initWeights(double * weights);
 static void waitForProcess(pid_t realPid);
 static void assignSignalHandlers();
 static void cleanUpAndExit(int param);
@@ -63,7 +63,7 @@ static char * shm;			// Pointer to shared memory
 static ProtectedClock * systemClock;	// Shared memory system clock
 static FrameDescriptor * frameTable;	// Shared memory frame table
 static PCB * pcbs;			// Shared process control blocks
-static int * weights;			// Shared array of page num weights
+static double * weights;		// Shared array of page num weights
 
 static int requestMqId;	// Id of message queue for resource requests & release
 static int replyMqId;	// Id of message queue for replies from oss
@@ -93,7 +93,7 @@ int main(int argc, char * argv[]){
 	initPcbArray(pcbs);
 
 	// Initializes array of weights if option set
-	if (strcmp(weighted, "1"))
+	if (strcmp(weighted, "1") == 0)
 		initWeights(weights);
 	
 	// Generates processes and simulates paging 
@@ -434,8 +434,22 @@ static void grantRequest(int simPid){
 }
 
 // Initializes an array of weights for address selection in child processes
-static void initWeights(int * weights){
-	fprintf(stderr, "initWeights called");	
+static void initWeights(double * weights){
+	int i;
+
+	// Initializes each element n to 1/n
+	for (i = 0; i < MAX_ALLOC_PAGES; i++){
+		weights[i] = 1.0 / (double) (i + 1);
+	}
+
+	// Adds the sum of the previous elements to each element
+	fprintf(stderr, "Weights: %f", weights[0]);
+	for (i = 1; i < MAX_ALLOC_PAGES; i++){
+		weights[i] += weights[i - 1];
+		fprintf(stderr, ", %f", weights[i]);		
+	}
+
+	sleep(1);
 }
 
 // Waits for the process with pid equal to the realPid parameter

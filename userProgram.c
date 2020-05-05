@@ -23,6 +23,7 @@
 // Prototypes
 static void simulateMemoryReferencing();
 static int getAddress();
+static int weightedAddressSelection(int maxPageNum);
 static void makeReadReference(int address);
 static void makeWriteReference(int address);
 static void signalTermination();
@@ -39,7 +40,7 @@ static char * shm;                              // Pointer to shared memory
 static ProtectedClock * systemClock;            // Shared memory system clock
 static FrameDescriptor * frameTable;            // Shared memory frame table
 static PCB * pcbs;                              // Shared process control blocks
-static int * weights;
+static double * weights;
 
 static int simPid;	// Logical pid of the process
 static int weighted;	// Whether the random address selection is weighted
@@ -137,9 +138,30 @@ static void makeWriteReference(int address){
 
 // Returns a reference to an address in memory allocated to the process
 static int getAddress(){
-	return randInt(0, pcbs[simPid].lengthRegister * PAGE_SIZE - 1);
+	int maxPageNum = pcbs[simPid].lengthRegister - 1;
+
+	if (weighted)
+		return weightedAddressSelection(maxPageNum);
+	else
+		return randInt(0, (maxPageNum + 1) * PAGE_SIZE - 1);
 }
 
+// Returns an address in page n with probability proportional to 1/n
+static int weightedAddressSelection(int maxPageNum){
+	double maxVal = weights[maxPageNum];
+	double val = randDouble(0, maxVal);
+
+	// Selects a random page number using the array of weights
+	int pageNum;
+	for (pageNum = 0; pageNum < maxPageNum; pageNum++){
+		if (weights[pageNum] > val) break;
+	}
+
+	// Returns a random address in the selected page
+	return pageNum * PAGE_SIZE + randInt(0, PAGE_SIZE - 1);
+}
+
+// Sends a message to oss indicating that the process is terminating
 static void signalTermination(){
 	char msgBuff[BUFF_SZ];
 	sprintf(msgBuff, "%d", TERMINATE);

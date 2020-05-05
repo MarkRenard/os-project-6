@@ -47,3 +47,12 @@ int randBinary(double probability){
 
 	return rand() < threshold ? 1 : 0;
 }
+
+// Returns a double in the range [min, max)
+double randDouble(double min, double max){
+	double range = max - min;
+
+	double fraction = (double) rand() / (double) RAND_MAX;
+
+	return fraction * range + min;
+}

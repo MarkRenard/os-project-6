@@ -1,0 +1,10 @@
+
+With weighting:
+Number of memory accesses per second: 278.680617
+Number of page faults per memory access: 0.190145
+Average memory access speed: 0.000000 seconds per access
+
+Without weighting:
+Number of memory accesses per second: 342.605626
+Number of page faults per memory access: 0.163290
+Average memory access speed: 0.000000 seconds per access
