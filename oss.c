@@ -4,6 +4,7 @@
 
 #include "bitVector.h"
 #include "clock.h"
+#include "getOption.h"
 #include "getSharedMemoryPointers.h"
 #include "logging.h"
 #include "pcb.h"
@@ -64,10 +65,14 @@ static PCB * pcbs;			// Shared process control blocks
 static int requestMqId;	// Id of message queue for resource requests & release
 static int replyMqId;	// Id of message queue for replies from oss
 
+static int weighted;	// Indicates weighted address distribution if non-zero
+
 int main(int argc, char * argv[]){
 	exeName = argv[0];	// Assigns exeName for perrorExit
 	assignSignalHandlers(); // Sets response to ctrl + C & alarm
 	openLogFile();		// Opens file written to in logging.c
+
+	weighted = getOption(argc, argv);
 
 	srand(BASE_SEED - 1);   // Seeds pseudorandom number generator
 
