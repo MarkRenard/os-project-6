@@ -33,15 +33,25 @@ Stats getStats(Clock currentTime){
 
 			"currentTime: %03d : %09d\n" \
 			"accessSeconds: %Lf\n" \
-			"totalSeconds: %Lf\n",
+			"totalSeconds: %Lf\n\n" \
+
+			"memoryAccessesPerSecond: %Lf\n" \
+			"pageFaultsPerMemoryAccess: %Lf\n" \
+			"averageMemoryAccessSpeed: %Lf\n\n",
+
 			totalMemoryAccesses,
 			totalPageFaults,
 			totalMemoryAccessTime.seconds,
 			totalMemoryAccessTime.nanoseconds,
+
 			currentTime.seconds,
 			currentTime.nanoseconds,
 			accessSeconds,
-			totalSeconds);
+			totalSeconds,
+
+			stats.memoryAccessesPerSecond,
+			stats.pageFaultsPerMemoryAccess,
+			stats.averageMemoryAccessSpeed);
 
 	return stats;
 }

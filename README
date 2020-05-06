@@ -1,0 +1,115 @@
+	CMPSCI 4760 Operating Systems - Assignment 6 - Mark Renard
+
+Assignment Description
+
+ This assignment simulates memory management. oss launches processes at random
+ times. These processes notify oss when they try to read or write to a page in 
+ simulated memory. If the page is in memory, oss translates the logical address 
+ into a physical address using that process's page table, sets the corresponding
+ reference char, and notifies the process using a message queue. Otherwise, the 
+ process is suspended and its process control block is enqueued, waiting for
+ access to the page on disk. 
+
+ A frame is allocated to the page requested by the process at the front of the 
+ queue, either by selecting a free frame using a bit vector or by selecting a 
+ victim frame using a clock replacement algorithm. Loading of the page requested
+ by the process at the head of the queue is simulated by waiting for a semaphore
+ protected logical clock to advance 14ms before notifying it, or if the selected
+ frame is a dirty victim frame, an additional 14ms is required for writing the
+ data in the frame to the disk before swapping in the new page.
+
+
+Usage
+
+ The child processes have two ways of randomly generating memory references. The
+ first is to generate any address in its virtual address space with equal
+ probability. This is enabled using the invocation
+
+	./oss -m 0
+
+
+ The other method assigns a weight to each page, where the weight for page n
+ is 1/(n + 1), and the probability of selecing page n is 
+
+	[1/(n + 1)] / [∑ 1 / i], from i = 1 to s
+
+ where s is the number of pages allocated to the process. An address in that
+ page is selected randomly, where each such address has an equal probability of
+ being selected. This method can be enabled using the invocation
+
+	./oss -m 1
+
+
+Comments on Relative Performance
+
+ Any difference between the two methods will be largely due to differing page
+ fault rates. A table showing the total page faults, total memory references,
+ and overall page fault rate for 8 trials of each method follows:
+
+ Unweighted
+  Trial Num:        1      2      3      4      5      6      7      8 
+  Page Faults:   4874   4876   4146   5981   8274   5411   5169   7807
+  References:   98200 103343  97253 100994  99885 102896 113763 101683
+  Rate:        .04963 .04718 .04263 .05922 .08284 .05259 .04544 .07678
+
+ Weighted
+  Trial Num:        1      2      3      4      5      6      7      8
+  Page Faults:   2725   4074   4452   5324   3721   5990   2714   4155
+  References:  102226 103040  99580  99888 102623 100963 110401  99858
+  Rate:        .02666 .03954 .04471 .05330 .03626 .05933 .02458 .04161
+
+ 27 additional page fault rates for each method are recorded:
+
+ Unweighted:
+  .05473, .04310, .05280, .04817, .03789, .04528, .04965, .06308, .05680,
+  .05249, .04743, .04263, .04852, .05298, .06099, .05754, .04749, .04304,
+  .07611, .06039, .07967, .08149, .03889, .10175, .04254, .04258, .07282,
+
+ Weighted:
+  .03987, .03802, .04042, .03906, .04052, .07367, .04466, .05720, .05515,
+  .04178, .03887, .05903, .03348, .04076, .04527, .03358, .01810, .04471,
+  .03394, .05679, .03677, .02851, .05107, .04681, .04337, .05590, .05182
+
+			Unweighted	Weighted
+ Sample Size:		35		35
+ Sample Mean:		0.055919	0.043289
+ Standard Deviation:	0.014752	0.011119
+
+ With over 99% confidence, a lower proportion of page faults results from the
+ weighted method of address selection than from the unweighted method.
+
+	p-value: 2.618 x 10^-5
+
+ Computed using Wolfram Alpha (see link at the bottom)
+
+
+Notes
+
+ This message queue implementation is less efficient than one using semaphores,
+ so it will often take more than 2 seconds to complete. The alarm as been
+ configured to terminate oss and child processes after 4 seconds. This can be
+ adjusted by changing the value of MAX_EXEC_SECONDS, defined in constants.h
+ along with other project-specific constants.
+
+ A previous attempt at documenting the relative performance of the two methods
+ showed fewer total references being made using the weighted method, though 
+ this figure shouldn't be effected. This is likely due to the use of a fixed 
+ PRNG seed. The resulting data set, though likely biased, is included:
+  
+ Unweighted
+  Trial Num:        1      2      3      4      5      6      7      8 
+  Page Faults:   3715   3175   5051   4352   3953   4672   4139   3725
+  References:  105242 101688 106331 103880 104321 103263 104152 105586
+  Rate:        .03529 .03122 .04750 .04189 .37893 .04524 .03974 .03528
+
+ Weighted
+  Trial Num:        1      2      3      4      5      6      7      9
+  Page Faults:   6092   2885   4059   4825   4566   4158   3422   4081
+  References:   98025  99865  98346  98175  99097  98937  98414  98930
+  Rate:        .06214 .02880 .04127 .04915 .04608 .04203 .03477 .04125
+
+Wolfram Alpha link:
+
+https://www.wolframalpha.com/input/?i=hypothesis+test+for+the+difference+between+two+means&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22xbar1%22%7D+-%3E%22.055919%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22mu0%22%7D+-%3E%220%22&assumption=%22FSelect%22+-%3E+%7B%7B%22MeanDifferenceZTest%22%7D%7D&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22sigma1%22%7D+-%3E%22.014752%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22sigma2%22%7D+-%3E%22.011119%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22xbar2%22%7D+-%3E%22.043289%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22n1%22%7D+-%3E%2235%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22n2%22%7D+-%3E%2235%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22c%22%7D+-%3E%220.95%22
+
+

@@ -14,11 +14,4 @@ typedef struct frameDescriptor{
 	char dirty;	// Whether frame was written to since last disk write
 } FrameDescriptor;
 
-/*
-void readFrame(FrameDescriptor *);
-void writeFrame(FrameDescriptor *);
-void assignFrame(FrameDescriptor *, int simPid);
-void freeFrame(FrameDescriptor *);
-*/
-
 #endif

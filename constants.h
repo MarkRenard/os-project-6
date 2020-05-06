@@ -13,7 +13,7 @@
 
 // Miscelaneous
 #define MAX_RUNNING 18 	 		// Max number of running child processes
-#define MAX_LAUNCHED 50			// Max total children launched
+#define MAX_LAUNCHED 100		// Max total children launched
 
 #define PAGE_SIZE 1024			// Size of one page in bytes
 #define NUM_FRAMES 256			// Total frames in main memory
@@ -38,9 +38,6 @@
 
 #define USER_PROG_PATH "./userProgram"	// The path to the user program
 
-#define LOOP_INCREMENT_SEC 0		// System clock increment per loop sec
-#define LOOP_INCREMENT_NS (50 * MILLION)// System clock increment per loop ns
-
 #define MEM_ACCESS_SEC 0		// Time to access main memory seconds
 #define MEM_ACCESS_NS 10		// Time to access main memory nanosec
 
@@ -50,12 +47,13 @@
 #define MEM_MAP_PRINT_INTERVAL_SEC 1	// Interval between memory map prints sec
 #define MEM_MAP_PRINT_INTERVAL_NS 0	// Interval between memory map prints ns
 
+#define MAX_EXEC_SECONDS 99 		// Maximum total execution time
 
 // Used by userProgram.c
 #define READ_PROBABILITY 0.8		// Chance of read instead of write
 
-#define MIN_REFERENCES 90		// Min references before terminating
-#define MAX_REFERENCES 110		// Max before chance of termination
+#define MIN_REFERENCES 900		// Min references before terminating
+#define MAX_REFERENCES 1100		// Max before chance of termination
 
 #define MIN_REF_INTERVAL_SEC 0		// Min time between references sec
 #define MIN_REF_INTERVAL_NS 1		// Min time between references nanosec

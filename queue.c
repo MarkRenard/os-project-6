@@ -70,9 +70,6 @@ void enqueue(Queue * q, PCB * pcb){
 	// Increments node count in queue
 	q->count++;
 
-	printQueue(stderr, q);
-	fprintf(stderr, "\n");	
-
 }
 
 // Removes and returns PCB reference from the front of the queue

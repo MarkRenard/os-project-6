@@ -51,7 +51,9 @@ int main(int argc, char * argv[]){
 	exeName = argv[0];		// Sets exeName for perrorExit
 	simPid = atoi(argv[1]);		// Gets process's logical pid
 	weighted = atoi(argv[2]);	// Gets flag for address weighting
-	srand(BASE_SEED + simPid); 	// Seeds pseudorandom number generator
+
+	// Seeds pseudorandom number generator
+	srand(time(NULL) + BASE_SEED + simPid);
 
 	// Attaches to shared memory and gets pointers
 	getSharedMemoryPointers(&shm, &systemClock, &frameTable, &pcbs, 
@@ -121,7 +123,7 @@ static void makeReadReference(int address){
 	char addr[BUFF_SZ];
 	sprintf(addr, "%d", address);
 
-	fprintf(stderr, "\n\t\tP%d READING %s\n\n", simPid, addr);
+//	fprintf(stderr, "\n\t\tP%d READING %s\n\n", simPid, addr);
 
 	sendMessage(requestMqId, addr, simPid + 1);
 }
@@ -131,7 +133,7 @@ static void makeWriteReference(int address){
 	char addr[BUFF_SZ];
 	sprintf(addr, "%d", ~address);
 
-	fprintf(stderr, "\n\t\tP%d WRITING %s\n\n", simPid, addr);
+//	fprintf(stderr, "\n\t\tP%d WRITING %s\n\n", simPid, addr);
 
 	sendMessage(requestMqId, addr, simPid + 1);
 }
@@ -166,73 +168,8 @@ static void signalTermination(){
 	char msgBuff[BUFF_SZ];
 	sprintf(msgBuff, "%d", TERMINATE);
 
-	fprintf(stderr, "\n\t\tP%d TERMINATING\n\n", simPid);
+//	fprintf(stderr, "\n\t\tP%d TERMINATING\n\n", simPid);
 
 	sendMessage(requestMqId, msgBuff, simPid + 1);
 }
 
-/*
-// Sends a message over a message queue requesting random resources
-static bool requestResources( int simPid){
-	char msgBuff[BUFF_SZ];	// Message buffer
-
-	// Endcodes logical address
-		
-
-	// Sends the message
-	sprintf(msgBuff, "%d", encoded);
-	sendMessage(requestMqId, msgBuff, simPid + 1);
-
-	return true;
-
-}
-
-// Sends a message over a message queue releasing random resources
-static bool releaseResources(ResourceDescriptor * resources,
-			     Message * messages, int simPid){
-	char msgBuff[BUFF_SZ];	// Message buffer
-	int rNum;		// Resource index
-	int quantity;		// Actual quantity requested
-	int encoded;		// Encoded message
-	
-	// Selects a held resource at random or returns if no resources held
-	if ((rNum = getRandomRNum()) == -1){
-
-		 return false;
-	}
-
-	// Randomly determines quantity to release
-	quantity = randInt(1, targetHeld[rNum]);
-
-	// Records new target
-	targetHeld[rNum] -= quantity;
-
-	// Encodes resource index and quantity in a message
-	encoded = -((MAX_INST + 1) * rNum + quantity);
-
-	// Sends the message
-	sprintf(msgBuff, "%d", encoded);
-	sendMessage(requestMqId, msgBuff, simPid + 1);
-
-	return true;
-
-}
-
-// Gets a randomly chosen index of a held resource or -1 if no resources held
-static int getRandomRNum(){
-	int resourceCount;		// Number of resource classes held
-	int resInd[NUM_RESOURCES]; 	// Indices of held resources
-
-	// Records the indecies of held resources in resInd
-	int i = 0, j = 0;
-	for ( ; i < NUM_RESOURCES; i++)
-		if (targetHeld[i] > 0) resInd[j++] = i;
-	resourceCount = j;
-
-	// Returns -1 if no resoures are held
-	if (resourceCount == 0) return -1;
-
-	// Returns the index of the randomly chosen resource
-	return resInd[randInt(0, resourceCount - 1)];
-}
-*/
