@@ -6,6 +6,10 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
+#include "pcb.h"
+#include "frameDescriptor.h"
+#include "clock.h"
+
 // Opens the log file with name LOG_FILE_NAME or exits with an error message
 void openLogFile();
 
@@ -52,67 +56,16 @@ void logWriteIndication(int simPid, int address);
 // Logs that a queued read or wite reference was fulfilled
 void logGrantedQueuedRequest(int simPid, Reference ref);
 
+// Prints a representation of the page table of each process to teh log
+void logPages(const PCB * pcbs);
+
+// Prints a representation of frame data to the log
+void logFrames(const FrameDescriptor * frameTable);
+
 // Prints the memory map of the system to the log
-void logMemoryMap(const PCB * pcbs);
+void logMemoryMap(const PCB * pcbs, FrameDescriptor * frameTable, Clock time);
 
 // Logs memory access statistics
 void logStats(Clock time);
-/*
-// Logs the detection of a resource request
-void logRequestDetection(int simPid, int resourceId, int count, Clock time);
-
-// Logs allocation of a resource
-void logAllocation(int simPid, int resourceId, int count, Clock time);
-
-// Logs when a request is denied and placed in a queue for a resource
-void logEnqueue(int simPid, int quantity, int rNum, int available);
-
-// Prints the resource allocation table every 20 requests by default
-void logTable(ResourceDescriptor * resources);
-
-// Logs the ids and quantities of resources being released at a particular time
-void logResourceRelease(int simPid, int resourceId, int count, Clock time);
-
-// Prints a line that deadlock detection is being run
-void logDeadlockDetection(Clock time);
-
-// Prints the pids of processes in deadlock
-void logDeadlockedProcesses(int * deadlockedPids, int size);
-
-// Prints that a deadlock resolution attempt is being made
-void logResolutionAttempt();
-
-// Prints a message indicating that deadlock has been resolved
-void logResolutionSuccess();
-
-// Prints a message indicating that a process has terminated on its own
-void logCompletion(int simPid);
-
-// Prints a message indicating that a process with logical pid was killed
-void logKill(int simPid);
-
-// Prints the resource class ids and count of released resources
-void logRelease(int * resources);
-
-// Prints table of m resources, n processes
-int printTable(FILE * fp, int * table, int m, int n);
-
-// Prints allocated, requested, and available matrices to a file
-int printMatrices(FILE * fp, const int * allocated, const int * requested,
-		  const int * available); 
-
-// Prints a matrix representation of the state of the program to a file
-int printMatrixRep(FILE * fp, const ResourceDescriptor * resources);
-
-// Logs a matrix representation of the system state
-void logMatrixRep(const ResourceDescriptor * resources);
-
-// Logs allocated, requested, and available matrices
-void logMatrices(const int * allocated, const int * requested,
-                 const int * available);
-
-// Prints statistics to the log file at the end of a run
-void logStats();
-*/
 
 #endif

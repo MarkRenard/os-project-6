@@ -47,7 +47,7 @@
 #define MEM_MAP_PRINT_INTERVAL_SEC 1	// Interval between memory map prints sec
 #define MEM_MAP_PRINT_INTERVAL_NS 0	// Interval between memory map prints ns
 
-#define MAX_EXEC_SECONDS 99 		// Maximum total execution time
+#define MAX_EXEC_SECONDS 5 		// Maximum total execution time
 
 // Used by userProgram.c
 #define READ_PROBABILITY 0.8		// Chance of read instead of write

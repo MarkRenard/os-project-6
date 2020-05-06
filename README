@@ -39,6 +39,7 @@ Usage
 
 	./oss -m 1
 
+ By default, a log of the simulation is printed to the file oss_log.
 
 Comments on Relative Performance
 
@@ -96,9 +97,14 @@ Notes
 
  This message queue implementation is less efficient than one using semaphores,
  so it will often take more than 2 seconds to complete. The alarm as been
- configured to terminate oss and child processes after 4 seconds. This can be
+ configured to terminate oss and child processes after 5 seconds. This can be
  adjusted by changing the value of MAX_EXEC_SECONDS, defined in constants.h
  along with other project-specific constants.
+
+ The portion of the memory map showing the data in the frame table currently
+ prints stale simPids in the process column. It also prints zeros to begin
+ with, though they are assigned -1 at initialization. I'm not sure how to
+ remedy this, though it does not appear that this impacts the simulation.
 
  A previous attempt at documenting the relative performance of the two methods
  showed fewer total references being made using the weighted method, though 
@@ -121,4 +127,4 @@ Wolfram Alpha link:
 
 https://www.wolframalpha.com/input/?i=hypothesis+test+for+the+difference+between+two+means&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22xbar1%22%7D+-%3E%22.055919%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22mu0%22%7D+-%3E%220%22&assumption=%22FSelect%22+-%3E+%7B%7B%22MeanDifferenceZTest%22%7D%7D&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22sigma1%22%7D+-%3E%22.014752%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22sigma2%22%7D+-%3E%22.011119%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22xbar2%22%7D+-%3E%22.043289%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22n1%22%7D+-%3E%2235%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22n2%22%7D+-%3E%2235%22&assumption=%7B%22F%22%2C+%22MeanDifferenceZTest%22%2C+%22c%22%7D+-%3E%220.95%22
 
-
+Have a wonderful summer!

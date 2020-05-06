@@ -92,6 +92,7 @@ int main(int argc, char * argv[]){
 	// Initializes system clock and shared array of pcbs
 	initPClock(systemClock);
 	initPcbArray(pcbs);
+	initFrameTable(frameTable);
 
 	// Initializes array of weights if option set
 	if (strcmp(weighted, "1") == 0)
@@ -161,8 +162,9 @@ void simulateMemoryManagement(){
 		checkPagingQueue(&q);
 
 		// Prints the memory map if interval reached
-		if (clockCompare(timeToPrint, getPTime(systemClock)) <= 0){
-			logMemoryMap(pcbs);
+		Clock now = getPTime(systemClock);
+		if (clockCompare(timeToPrint, now) <= 0){
+			logMemoryMap(pcbs, frameTable, now);
 			incrementClock(&timeToPrint, MEM_INT);
 		}
 
@@ -368,11 +370,11 @@ static void deallocateFrame(int frameNum){
 	int pageNum = frameTable[frameNum].pageNum;
 
 	// Deallocates frame in page table
-	if (simPid != EMPTY)
+	if (simPid != (char) EMPTY)
 		pcbs[simPid].pageTable[pageNum].valid = 0;
 
 	// Deallocates frame in frame table
-	frameTable[frameNum].simPid = EMPTY;
+	frameTable[frameNum].simPid = (char) EMPTY;
 
 }
 

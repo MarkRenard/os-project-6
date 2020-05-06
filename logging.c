@@ -5,6 +5,7 @@
 
 #include "clock.h"
 #include "constants.h"
+#include "frameDescriptor.h"
 #include "pcb.h"
 #include "perrorExit.h"
 #include "stats.h"
@@ -166,8 +167,9 @@ void logGrantedQueuedRequest(int simPid, Reference ref){
 		logWriteIndication(simPid, ref.address);
 }
 
-// Prints the memory map of the system to the log
-void logMemoryMap(const PCB * pcbs){
+
+// Prints a representation of the page table of each process to teh log
+void logPages(const PCB * pcbs){
 	if (lines + MAX_RUNNING + 2 > MAX_LOG_LINES) return;
 	int i, j;
 
@@ -202,6 +204,37 @@ void logMemoryMap(const PCB * pcbs){
 	lines++;	
 	
 }
+
+// Prints a representation of frame data to the log
+void logFrames(const FrameDescriptor * frameTable){
+	if (lines + NUM_FRAMES + 2 > MAX_LOG_LINES) return;
+	lines += NUM_FRAMES + 2;
+
+	fprintf(log, "\t\tProcess\tRefByte\tDirtyBit\n");
+
+	int i;
+	for (i = 0; i < NUM_FRAMES; i++){
+		fprintf(log, "Frame %03d:\t%d\t%d\t%d\n", i, 
+			(int)frameTable[i].simPid,
+			(int)frameTable[i].reference, 
+			(int)frameTable[i].dirty);
+	}
+	fprintf(log, "\n");
+}
+
+// Prints the memory map of the system to the log
+void logMemoryMap(const PCB * pcbs, const FrameDescriptor * frameTable,
+		  Clock time){
+	lines += 2;
+	if (lines > MAX_LOG_LINES) return;
+
+	fprintf(log, "\nCurrent memory layout at time %03d : %09d is:\n",
+		time.seconds, time.nanoseconds);
+
+	logPages(pcbs);
+	logFrames(frameTable);
+}
+
 
 // Logs memory access statistics
 void logStats(Clock time){

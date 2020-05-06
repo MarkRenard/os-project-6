@@ -1,5 +1,5 @@
 OSS	= oss
-OSS_OBJ	= $(COMMON_O) oss.o logging.o stats.o getOption.o
+OSS_OBJ	= $(COMMON_O) oss.o frameDescriptor.o logging.o stats.o getOption.o
 OSS_H	= $(COMMON_H) logging.h stats.h getOption.h
 
 USER_PROG	= userProgram
@@ -8,8 +8,8 @@ USER_PROG_H	= $(COMMON_H)
 
 COMMON_O   = $(UTIL_O) bitVector.o getSharedMemoryPointers.o pcb.o \
 	     protectedClock.o qMsg.o queue.o
-COMMON_H   = $(UTIL_H) bitVector.h  constants.h  getSharedMemoryPointers.h \
-	     pcb.h protectedClock.h qMsg.h queue.h
+COMMON_H   = $(UTIL_H) bitVector.h frameDescriptor.h constants.h  \
+	     getSharedMemoryPointers.h pcb.h protectedClock.h qMsg.h queue.h
 
 UTIL_O	   = clock.o perrorExit.o randomGen.o sharedMemory.o
 UTIL_H	   = clock.h perrorExit.h randomGen.h sharedMemory.h shmkey.h
