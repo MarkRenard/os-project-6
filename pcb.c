@@ -26,7 +26,7 @@ static void setDefaults(PCB * pcb){
 	}
 
 	// Reference endTime is not set
-	pcb->lastReference.endTimeIsSet = false;
+	pcb->lastReference.completionTimeIsSet = false;
 
 	// Assigns random length
 	pcb->lengthRegister = randInt(MIN_ALLOC_PAGES, MAX_ALLOC_PAGES);
@@ -93,16 +93,19 @@ void setLastReferenceInPcb(PCB * pcb, int address, RefType type,
 }
 
 // Sets the time at which an I/O operation will complete
-void setIoCompletionTimeInPcb(PCB * pcb, Clock endTime){
-	copyTime(&pcb->lastReference.endTime, endTime);
-	pcb->lastReference.endTimeIsSet = true;
+void setIoCompletionTimeInPcb(PCB * pcb, Clock completeTime){
+	copyTime(&pcb->lastReference.pageCompleteTime, completeTime);
+	pcb->lastReference.completionTimeIsSet = true;
 }
 
 // Adds access time to accululator and increments the number of accesses
 void completeReferenceInPcb(PCB * pcb, Clock refCompletionTime){
 
+	// Sets end time for last reference
+	copyTime(&pcb->lastReference.endTime, refCompletionTime);
+
 	// Adds elapsed time durring last reference to total
-	Clock elapsed = clockDiff(refCompletionTime,
+	Clock elapsed = clockDiff(pcb->lastReference.endTime,
 				  pcb->lastReference.startTime);
 	incrementClock(&pcb->totalAccessTime, elapsed);
 
@@ -110,7 +113,7 @@ void completeReferenceInPcb(PCB * pcb, Clock refCompletionTime){
 	pcb->totalReferences += 1;
 
 	// Indicates last end time is invalid
-	pcb->lastReference.endTimeIsSet = false;
+	pcb->lastReference.completionTimeIsSet = false;
 }
 
 // Returns effective memory access time

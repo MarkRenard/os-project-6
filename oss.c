@@ -225,7 +225,6 @@ static int messageReceived(int * senderSimPid, int * msg){
 		setLastReferenceInPcb(&pcbs[*senderSimPid], address, type, 
 				      getPTime(systemClock));
 
-//		fprintf(stderr, "Got msg %d from P%d\n", *msg, *senderSimPid);
 
 		return 1;
 	}
@@ -235,7 +234,6 @@ static int messageReceived(int * senderSimPid, int * msg){
 
 // Logs termination, waits for terminated process, and deallocates frames
 static void processTermination(int simPid){
-//	fprintf(stderr, "oss processing termintation of P%d\n", simPid);
 	logTermination(simPid, getPTime(systemClock), &pcbs[simPid]);
 	waitForProcess(pcbs[simPid].realPid);
 	deallocateFrames(&pcbs[simPid]);
@@ -267,8 +265,7 @@ static void processReference(int simPid, Queue * q){
 
 	// Kills the process if the address is illegal
 	if (pageNum >= pcbs[simPid].lengthRegister){
-	//	killProcess(simPid);
-//		fprintf(stderr, "oss should kill P%d\n", simPid);
+		perrorExit("child accessed illegal memory region");
 		return;
 	}
 
@@ -276,7 +273,6 @@ static void processReference(int simPid, Queue * q){
 	if (!pcbs[simPid].pageTable[pageNum].valid) {
 		logPageFault(ref.address);
 		enqueue(q, &pcbs[simPid]);
-//		fprintf(stderr, "oss enqueued P%d\n", simPid);
 		return;
 	}
 
@@ -293,22 +289,18 @@ static void checkPagingQueue(Queue * q){
 	int frameNum;		// Number of frame to reallocate
 
 	// Checks the progress of I/O if a frame was read or written
-	if (q->front != NULL && q->front->lastReference.endTimeIsSet) {
-
-//		fprintf(stderr, "\t\tEND TIME SET FOR P%d!!!!!!\n", 
-//			q->front->simPid);
+	if (q->front != NULL && q->front->lastReference.completionTimeIsSet) {
 
 		// Returns if reference end time is in the future
-		if (clockCompare(q->front->lastReference.endTime, 
+		if (clockCompare(q->front->lastReference.pageCompleteTime, 
 				 getPTime(systemClock)) > 0){
-//			fprintf(stderr, "\t\tEND TIME NOT ARRIVED\n");
 			return;
 		}
 
 		// Completes memory reference if read/write has completed
 		else {
 			grantRequest(q->front->simPid);
-			q->front->lastReference.endTimeIsSet = false;
+			q->front->lastReference.completionTimeIsSet = false;
 			logGrantedQueuedRequest(q->front->simPid, 
 						q->front->lastReference);
 			dequeue(q);
@@ -400,18 +392,12 @@ static int selectVictim(){
 static void grantRequest(int simPid){
 	int logicalAddress;	// The requested logical address
 	int pageNum;		// Page number of requested address
-//	int offset;		// Offset of requested address
 	PageTableEntry * page;	// Page corresponding to the address
-//	int physicalAddress;	// The requested physical address
 	
 	// Gets requested logical address and computes page number and offset
 	logicalAddress = pcbs[simPid].lastReference.address;
 	pageNum = logicalAddress / PAGE_SIZE;
-//	offset = logicalAddress % PAGE_SIZE;
 	page = &pcbs[simPid].pageTable[pageNum];
-
-	// Computes frame number and physical address
-//	physicalAddress = page->frameNumber * PAGE_SIZE + offset;
 
 	// Sets dirty bits if operation was write operation
 	if (pcbs[simPid].lastReference.type == WRITE_REFERENCE){
@@ -430,8 +416,6 @@ static void grantRequest(int simPid){
 
 	// Sends reply message
 	sendMessage(replyMqId, "\0", simPid + 1);
-//	fprintf(stderr, "oss: logical: %d page: %d frame: %d physical: %d\n",
-//		logicalAddress, pageNum, page->frameNumber, physicalAddress);
 }
 
 // Initializes an array of weights for address selection in child processes
@@ -444,13 +428,10 @@ static void initWeights(double * weights){
 	}
 
 	// Adds the sum of the previous elements to each element
-//	fprintf(stderr, "Weights: %f", weights[0]);
 	for (i = 1; i < MAX_ALLOC_PAGES; i++){
 		weights[i] += weights[i - 1];
-//		fprintf(stderr, ", %f", weights[i]);		
 	}
 
-//	sleep(1);
 }
 
 // Waits for the process with pid equal to the realPid parameter

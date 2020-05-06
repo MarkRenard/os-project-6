@@ -28,8 +28,10 @@ typedef struct reference {
 	RefType type;		// Whether the reference is read or write
 
 	Clock startTime;	// The time the memory reference started
+	Clock pageCompleteTime; // The time paging operations completed
 	Clock endTime;		// The time the reference was comlpeted
-	bool endTimeIsSet;	// Whether endTime has been set
+
+	bool completionTimeIsSet;	// Whether pageCompletionTime is set
 } Reference;
 
 struct queue;

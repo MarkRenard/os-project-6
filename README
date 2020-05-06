@@ -42,9 +42,18 @@ Usage
 
 Comments on Relative Performance
 
- Any difference between the two methods will be largely due to differing page
- fault rates. A table showing the total page faults, total memory references,
- and overall page fault rate for 8 trials of each method follows:
+ The weighted method of selecting addresses to reference is a closer 
+ representation of how pages would be requested because it approximates
+ the principal of locality. Memory references tend to cluster in space and
+ in time, and the weighting scheme has the effect of producing both types of
+ clustering. Because of this locality of reference, page faults are less
+ frequent when using the weighted method, since the clock replacement method
+ tends to preserve the frames in memory that have been referenced recently,
+ and those are the frames that are most likely to be referenced later.
+
+ Any difference in performance between the two methods will be largely due to 
+ differing page fault rates. A table showing the total page faults, total memory
+ references, and overall page fault rate for 8 trials of each method follows:
 
  Unweighted
   Trial Num:        1      2      3      4      5      6      7      8 

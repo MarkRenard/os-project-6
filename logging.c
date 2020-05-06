@@ -13,6 +13,8 @@
 static FILE * log = NULL;
 static int lines = 0;
 
+Clock MEM_ACCESS_TIME = {MEM_ACCESS_SEC, MEM_ACCESS_NS};
+
 // Opens the log file with name LOG_FILE_NAME or exits with an error message
 void openLogFile(){
 	if ((log = fopen(LOG_FILE_NAME, "w+")) == NULL)
@@ -82,8 +84,6 @@ void logWriteGranted(int address, int frameNum, int simPid, Clock time){
 
 // Logs when a request was received by oss
 void logRequest(int simPid, Reference ref, Clock time){
-//        fprintf(stderr, "oss processing P%d reference to %d\n", simPid,
-//                ref.address);
 
 	// Tracks number of memory accesses
 	statsMemoryAccess();
@@ -99,8 +99,8 @@ void logGrantedRequest(Reference ref, unsigned char frameNum, int simPid,
 		       Clock time){
 
 	// Tracks total memory access time
-	statsAddMemoryAccessTime(clockDiff(time, ref.startTime));
-
+	Clock diff = clockDiff(time, ref.startTime); 
+	statsAddMemoryAccessTime(diff);
 
 	if (ref.type == READ_REFERENCE){
 		logReadGranted(ref.address, frameNum, simPid, time);
@@ -155,6 +155,11 @@ void logWriteIndication(int simPid, int address){
 
 // Logs that a queued read or wite reference was fulfilled
 void logGrantedQueuedRequest(int simPid, Reference ref){
+
+	// Tracks memory access time
+	Clock diff = clockDiff(ref.endTime, ref.startTime); 
+	statsAddMemoryAccessTime(diff);
+
 	if (ref.type == READ_REFERENCE)
 		logReadIndication(simPid, ref.address);
 	else
